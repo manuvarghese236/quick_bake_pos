@@ -25,19 +25,20 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:image/image.dart' as im;
 
+import '../models/contact.dart';
 import '../models/printermodel.dart';
 
 class API {
   static Color background = Color(0xFFf5f5f5);
   static Color bordercolor = Color(0xFF546E7A);
   static Color textcolor = Colors.black;
-  static Color tilecolor = Colors.black;
+  static Color tilecolor = Color(0xFF451a00);
   static Color tilewhite = Colors.white;
 
   // static String baseurl = "https://bluesky01.com/dehnee/index.php?r=";
   // static String imgurl = "https://bluesky01.com/dehnee/";
-  static String baseurl = "http://bluesky01.com/staging/dehnee/index.php?r=";
-  static String imgurl = "http://bluesky01.com/staging/dehnee/";
+  static String baseurl = "http://bluesky01.com/quickbake/index.php?r=";
+  static String imgurl = "http://bluesky01.com/quickbake/";
 
   static TextStyle textdetailstyle() {
     return TextStyle(
@@ -115,7 +116,7 @@ class API {
                 height: PdfPageFormat.cm,
                 // color: PdfColors.green,
                 child: pw.Center(
-                    child: pw.Text('TAX INVOICE',
+                    child: pw.Text('INVOICE',
                         textAlign: pw.TextAlign.center,
                         style: pw.TextStyle(
                             color: PdfColors.black,
@@ -587,6 +588,7 @@ class API {
     String typedata = type == true ? "1" : "0";
     final customersearch =
         '${baseurl}apicustomer/GetList&term=$term&all=$typedata';
+
     print(token);
     print(customersearch);
     final response = await get(
@@ -682,23 +684,32 @@ class API {
   //   return response.map((json) => LocationSchema.fromJson(json)).toList();
   // }
 
-  static Future<Map<String, dynamic>> saveCustomerAPI(String customername,
-      String phone, String email, String location, String token) async {
-    print({
+  static Future<Map<String, dynamic>> saveCustomerAPI(
+      String id,
+      String customername,
+      String phone,
+      String email,
+      String location,
+      String customer_address,
+      List<CustomerContact> ContactList,
+      String token) async {
+    List arrContacts = [];
+    for (var element in ContactList) {
+      arrContacts.add(element.getJson());
+    }
+    var data = json.encode({
+      "id": id,
       "customer_name": customername,
       "email": email,
       "location": location,
-      "phone": phone
+      "phone": phone,
+      "customer_address": customer_address,
+      "arr_contacts": arrContacts
     });
     print(token);
+    print(data);
     final response = await post(Uri.parse('${baseurl}apicustomer/savecustomer'),
-        headers: {"Accept": "application/json", "token": token},
-        body: json.encode({
-          "customer_name": customername,
-          "email": email,
-          "location": location,
-          "phone": phone
-        }));
+        headers: {"Accept": "application/json", "token": token}, body: data);
     if (response.statusCode == 200) {
       dynamic savecustomerresponse = jsonDecode(response.body);
       print(savecustomerresponse);
@@ -739,10 +750,12 @@ class API {
     }
   }
 
-  static Future<Map<String, dynamic>> customersListAPI(String token) async {
-    print(Uri.parse('${baseurl}apicustomer/GetList'));
+  static Future<Map<String, dynamic>> customersListAPI(
+      String token, String term, int draw) async {
+    String url = '${baseurl}apicustomer/GetList&term=${term}&draw=draw';
+    print(url);
     final response = await get(
-      Uri.parse('${baseurl}apicustomer/GetList'),
+      Uri.parse(url),
       headers: {"Accept": "application/json", "token": token},
     );
     if (response.statusCode == 200) {
@@ -772,14 +785,14 @@ class API {
     }
   }
 
-  static Future<Map<String, dynamic>> invoiceListAPI(
-      String date, String salesmanid, String locationid, String token) async {
+  static Future<Map<String, dynamic>> invoiceListAPI(String term, String date,
+      String salesmanid, String locationid, String token) async {
     print(token);
     print(Uri.parse(
-        '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}'));
+        '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}'));
     final response = await get(
       Uri.parse(
-          '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}'),
+          '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}'),
       headers: {"Accept": "application/json", "token": token},
     );
     if (response.statusCode == 200) {
@@ -973,53 +986,50 @@ class API {
 
   /// this saving Invoice to the server.
   static Future<Map<String, dynamic>> saveInvoiceAPI(
-      String userid,
-      String customerid,
-      List<dynamic> items,
-      String receipttype,
-      String receivedamount,
-      String authorizationcode,
-      String token,
-      String cashamount,
-      String cardamount,
-      String footer_discount,
-      String footer_discount_Pecentage) async {
+    String userid,
+    String customerid,
+    String contactId,
+    List<dynamic> items,
+    String receipttype,
+    String receivedamount,
+    String authorizationcode,
+    String token,
+    String cashamount,
+    String cardamount,
+    String footer_discount,
+    String footer_discount_Pecentage,
+    bool homeDelivery,
+    String grand_total,
+  ) async {
     final saveinvoiceurl = "${baseurl}apiinvoice/SaveInvoice";
     try {
-      final response = await post(
-        Uri.parse(saveinvoiceurl),
-        headers: {"Accept": "application/json", "token": token},
-        body: json.encode(
-          {
-            "created_by": userid,
-            "receipt_type": receipttype,
-            "received_amount": receivedamount,
-            "authorization_code": authorizationcode,
-            "customer_id": customerid,
-            "items": items,
-            "received_card_amount": cardamount,
-            "received_cash_amount": cashamount,
-            "footer_discount": footer_discount,
-            "footer_discount_percentage": footer_discount_Pecentage
-          },
-        ),
-      );
-      print(saveinvoiceurl);
-      print(token);
-      print(
-        json.encode({
+      var data = json.encode(
+        {
           "created_by": userid,
           "receipt_type": receipttype,
           "received_amount": receivedamount,
           "authorization_code": authorizationcode,
           "customer_id": customerid,
+          "contact_id": contactId,
           "items": items,
           "received_card_amount": cardamount,
           "received_cash_amount": cashamount,
           "footer_discount": footer_discount,
-          "footer_discount_percentage": footer_discount_Pecentage
-        }),
+          "footer_discount_percentage": footer_discount_Pecentage,
+          "home_delivery": homeDelivery ? "Y" : "N",
+          "grand_total": grand_total
+        },
       );
+      print(saveinvoiceurl);
+      print(token);
+      print(data);
+      print("------------------");
+      final response = await post(
+        Uri.parse(saveinvoiceurl),
+        headers: {"Accept": "application/json", "token": token},
+        body: data,
+      );
+
       if (response.statusCode == 200) {
         dynamic saveinvoiceresponse = jsonDecode(response.body);
         print(saveinvoiceresponse);
@@ -1045,6 +1055,7 @@ class API {
       String trn_no,
       String branchlink,
       String warehouse_id,
+      String warehouse_name,
       String master_company_id,
       String barcodenabled) async {
     SharedPreferences blueskydehneepos = await SharedPreferences.getInstance();
@@ -1059,6 +1070,7 @@ class API {
       blueskydehneepos.setString('trn_no', trn_no);
       blueskydehneepos.setString('branchlink', branchlink);
       blueskydehneepos.setString('warehouse_id', warehouse_id);
+      blueskydehneepos.setString('warehouse_name', warehouse_name);
       blueskydehneepos.setString('master_company_id', master_company_id);
       blueskydehneepos.setString('barcodenabled', barcodenabled);
       return {'status': 'success', 'msg': 'done'};
@@ -1720,6 +1732,7 @@ class API {
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
+      /*
       bytes += printer.row([
         PosColumn(
           text: "Total w/t VAT",
@@ -1740,7 +1753,7 @@ class API {
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
-      ]);
+      ]); 
       bytes += printer.row([
         PosColumn(
           text: "VAT",
@@ -1759,7 +1772,7 @@ class API {
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
-      ]);
+      ]); */
       bytes += printer.hr();
       bytes += printer.row([
         PosColumn(
@@ -1932,7 +1945,7 @@ class API {
       Map<String, dynamic> footerDeatils) async {
     try {
       final imageHeadingBytes = await generateHeadingImageFromString(
-        "فاتورة ضريبية",
+        "فاتورة ",
       );
       final imageBytes = await generateImageFromString(
         "رقم الفاتورة",
@@ -1970,23 +1983,23 @@ class API {
       final printer = Generator(PaperSize.mm80, profile);
       List<int> bytes = [];
       bytes += printer.image(logoimage);
-      bytes += printer.emptyLines(1);
+      //bytes += printer.emptyLines(1);
       bytes += printer.text(companyaddress,
           styles: PosStyles(align: PosAlign.center, bold: true));
       bytes +=
           printer.text(companyphone, styles: PosStyles(align: PosAlign.center));
-      bytes += printer.text("TRN : " + companytrn,
-          styles: PosStyles(align: PosAlign.center));
-      bytes += printer.emptyLines(2);
-      bytes += printer.image(im.decodeImage(imageHeadingBytes)!);
-      bytes += printer.text('TAX INVOICE',
+      // bytes += printer.text("TRN : " + companytrn,
+      //     styles: PosStyles(align: PosAlign.center));
+      //bytes += printer.emptyLines(1);
+      //bytes += printer.image(im.decodeImage(imageHeadingBytes)!);
+      bytes += printer.text('SALES INVOICE',
           styles: PosStyles(
             bold: true,
             align: PosAlign.center,
             height: PosTextSize.size2,
             width: PosTextSize.size2,
           ));
-      bytes += printer.emptyLines(1);
+      //bytes += printer.emptyLines(1);
       bytes += printer.image(im.decodeImage(imageBytes)!, align: PosAlign.left);
       bytes += printer.row([
         PosColumn(
@@ -2076,19 +2089,21 @@ class API {
             styles: PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
-      bytes += printer.image(im.decodeImage(imageAddressBytes)!,
-          align: PosAlign.left);
-      bytes += printer.row([
-        PosColumn(
-            text: "address",
-            styles: PosStyles(bold: true, align: PosAlign.left),
-            width: 3),
-        PosColumn(
-            text: ": $customeraddress",
-            styles: PosStyles(bold: true, align: PosAlign.left),
-            width: 9)
-      ]);
-      bytes += printer.emptyLines(1);
+
+      ///removing address section
+      // bytes += printer.image(im.decodeImage(imageAddressBytes)!,
+      //     align: PosAlign.left);
+      // bytes += printer.row([
+      //   PosColumn(
+      //       text: "address",
+      //       styles: PosStyles(bold: true, align: PosAlign.left),
+      //       width: 3),
+      //   PosColumn(
+      //       text: ": $customeraddress",
+      //       styles: PosStyles(bold: true, align: PosAlign.left),
+      //       width: 9)
+      // ]);
+      //bytes += printer.emptyLines(1);
       bytes += printer.hr();
       bytes += printer.image(im.decodeImage(rowimage)!);
       bytes += printer.row([
@@ -2196,6 +2211,7 @@ class API {
       ]);
       bytes += printer.image(im.decodeImage(imageTotalwoVatBytes)!,
           align: PosAlign.left);
+      /*
       bytes += printer.row([
         PosColumn(
           text: "Total w/t VAT",
@@ -2216,7 +2232,7 @@ class API {
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
-      ]);
+      ]); 
       bytes +=
           printer.image(im.decodeImage(imageVatBytes)!, align: PosAlign.left);
       bytes += printer.row([
@@ -2239,10 +2255,11 @@ class API {
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
-      ]);
+      ]);*/
       bytes += printer.hr();
       bytes += printer.image(im.decodeImage(imageGrandTotalBytes)!,
           align: PosAlign.left);
+
       bytes += printer.row([
         PosColumn(
           text: "Grand Total",
@@ -2262,7 +2279,7 @@ class API {
             width: 6),
       ]);
       bytes += printer.hr();
-      bytes += printer.emptyLines(2);
+      //bytes += printer.emptyLines(2);
       bytes += printer.row([
         PosColumn(
             text: "Receipt Type",
@@ -2307,10 +2324,10 @@ class API {
             styles: PosStyles(bold: false, align: PosAlign.left),
             width: 12)
       ]);
-      bytes += printer.emptyLines(1);
+      //bytes += printer.emptyLines(1);
       bytes += printer.text('Thank you !! Visit Again',
           styles: PosStyles(align: PosAlign.center));
-      bytes += printer.emptyLines(1);
+      //bytes += printer.emptyLines(1);
       List<dynamic> invoiceidlistdata =
           invoiceid.split("").map(int.parse).toList();
       print(invoiceidlistdata);
@@ -2328,6 +2345,22 @@ class API {
     } catch (e) {
       print("this is catch part");
       print(e);
+    }
+  }
+
+  getCustomerContact(String CustomerId, token) async {
+    final url = '${baseurl}Apicustomer/GetContactList&id=$CustomerId';
+    print(token);
+    print(url);
+    print(url);
+    final response = await get(
+      Uri.parse(url),
+      headers: {"Accept": "application/json", 'token': token},
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return {"status": "error", "message": response.reasonPhrase};
     }
   }
 }

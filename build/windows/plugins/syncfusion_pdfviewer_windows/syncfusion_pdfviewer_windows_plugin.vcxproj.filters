@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\syncfusion_pdfviewer_windows\windows\pdfviewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\syncfusion_pdfviewer_windows\windows\syncfusion_pdfviewer_windows_plugin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\syncfusion_pdfviewer_windows\windows\pdfviewer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\syncfusion_pdfviewer_windows\windows\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{96AA39B5-B2C9-345B-972F-70F8D984B8E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{2022E2BC-B86C-3864-A115-6DD69953AC3E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

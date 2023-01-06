@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:route_transitions/route_transitions.dart';
@@ -24,6 +26,26 @@ class _CustomersState extends State<Customers> {
   List<dynamic> customerslist = [];
   bool error = false;
   String message = "";
+  TextEditingController termController = TextEditingController();
+  loadFromServer() async {
+    setState(() {
+      loading = true;
+    });
+    final dynamic customerslistresponse =
+        await API.customersListAPI(widget.token, termController.text, 0);
+    if (customerslistresponse["status"] == "success") {
+      setState(() {
+        customerslist = customerslistresponse["data"];
+        loading = false;
+      });
+    } else {
+      setState(() {
+        error = true;
+        message = customerslistresponse["msg"].toString();
+        loading = false;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -32,23 +54,10 @@ class _CustomersState extends State<Customers> {
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     Future.delayed(Duration(seconds: 0), () async {
-      setState(() {
-        loading = true;
+      loadFromServer();
+      termController.addListener(() {
+        loadFromServer();
       });
-      final dynamic customerslistresponse =
-          await API.customersListAPI(widget.token);
-      if (customerslistresponse["status"] == "success") {
-        setState(() {
-          customerslist = customerslistresponse["data"];
-          loading = false;
-        });
-      } else {
-        setState(() {
-          error = true;
-          message = customerslistresponse["msg"].toString();
-          loading = false;
-        });
-      }
     });
   }
 
@@ -65,14 +74,43 @@ class _CustomersState extends State<Customers> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: API.tilecolor,
-        title: Text(
-          "Customers",
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-              fontFamily: 'Montserrat',
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w400),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              "Customers",
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400),
+            ),
+            SizedBox(
+              width: MediaQuery.of(context).size.width / 4,
+              height: 60,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextFormField(
+                  style: TextStyle(),
+                  cursorColor: Colors.grey,
+                  controller: termController,
+                  decoration: InputDecoration(
+                    suffixIcon: Icon(Icons.search),
+
+                    hintText: "Search customer here",
+                    filled: true, //<-- SEE HERE
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(6.0),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          ],
         ),
         actions: [
           IconButton(
@@ -204,6 +242,12 @@ class _CustomersState extends State<Customers> {
                         ),
                       ],
                     ),
+                    trailing: IconButton(
+                      onPressed: () {
+                        openEditCustomer(index);
+                      },
+                      icon: Icon(Icons.edit_outlined),
+                    ),
                   );
                 },
                 separatorBuilder: (BuildContext context, int index) {
@@ -214,5 +258,17 @@ class _CustomersState extends State<Customers> {
               ),
             ),
     );
+  }
+
+  void openEditCustomer(int index) {
+    slideRightWidget(
+        newPage: AddCustomer(
+          type: "0",
+          customerId: customerslist[index]["id"].toString(),
+          token: widget.token,
+          usbdevice: widget.usbdevice,
+          userdetails: widget.userdetails,
+        ),
+        context: context);
   }
 }

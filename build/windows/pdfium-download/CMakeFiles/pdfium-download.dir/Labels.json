@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/pdfium-download"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/52ca06c76eeb2f1d8f7615268c7edc14/pdfium-download.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4ef77e74694745ba8a80af2dacc7f1dd/pdfium-download-complete.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-build.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-configure.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-download.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-install.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-mkdir.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-patch.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-test.rule"
+		},
+		{
+			"file" : "D:/flutter/quickbake/build/windows/pdfium-download/CMakeFiles/4bae1e8b03da046a9f95075292bbc6cd/pdfium-download-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"pdfium-download"
+		],
+		"name" : "pdfium-download"
+	}
+}

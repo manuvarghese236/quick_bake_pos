@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\x64\Profile\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\flutter\x64\Profile\flutter_assemble</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\charset_converter\Profile\charset_converter_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\flutter_pos_printer_platform\Profile\flutter_pos_printer_platform_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\network_info_plus_windows\Profile\network_info_plus_windows_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\printing\Profile\printing_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\syncfusion_pdfviewer_windows\Profile\syncfusion_pdfviewer_windows_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\url_launcher_windows\Profile\url_launcher_windows_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\runner\Profile\windowspos.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\x64\Profile\ALL_BUILD</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

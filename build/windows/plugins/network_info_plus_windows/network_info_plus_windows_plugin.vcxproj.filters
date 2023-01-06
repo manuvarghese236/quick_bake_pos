@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\network_info_plus_windows\windows\network_info.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\network_info_plus_windows\windows\network_info_plus_windows_plugin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\flutter\quickbake\windows\flutter\ephemeral\.plugin_symlinks\network_info_plus_windows\windows\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{2022E2BC-B86C-3864-A115-6DD69953AC3E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

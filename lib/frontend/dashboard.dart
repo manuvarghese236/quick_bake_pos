@@ -84,7 +84,7 @@ class _dashboardState extends State<dashboard> {
               //     typePrinter: PrinterType.network));
             },
             child: Text(
-              "Dehnee",
+              "Quick Bake".toUpperCase(),
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontFamily: 'Montserrat',

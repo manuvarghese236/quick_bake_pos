@@ -3,9 +3,21 @@
 import 'package:scoped_model/scoped_model.dart';
 import 'package:windowspos/models/itemmodel.dart';
 
+class SimpleConvert {
+  static double safeDouble(String? number) {
+    if (number == null) {
+      return 0.0;
+    } else {
+      String sanitizeNum = number.replaceAll(",", "");
+      double? doubleNum = double.tryParse(sanitizeNum);
+      return (doubleNum == null) ? 0.0 : doubleNum;
+    }
+  }
+}
+
 class CartModel extends Model {
   List<ItemSchema> cart = [];
-
+  bool LineDiscountEnabled = false;
   double total_with_out_vat = 0;
   double subTotal = 0;
   double totaldiscount = 0;
@@ -14,7 +26,45 @@ class CartModel extends Model {
   double footer_discount_Pecentage = 0.00;
   String footer_discount_text = "";
   double net_total = 0;
+
   int get total => cart.length;
+  double getTotalofLineDiscount() {
+    double totalDiscount = 0;
+    cart.forEach((element) {
+      totalDiscount += element.discount;
+    });
+    return totalDiscount;
+  }
+
+  void calculateDiscountFromLineTotal() {
+    double totalDiscount = 0;
+    double _total_amount = 0;
+    footer_discount = 0;
+    cart.forEach((element) {
+      //sum of discount
+      footer_discount += element.discount;
+      double discount_amt = element.discount;
+      element.discountvalue = discount_amt;
+      //line total
+      double eachtotal = SimpleConvert.safeDouble(element.rate) *
+          SimpleConvert.safeDouble(element.quantity);
+      // running line total
+      _total_amount += eachtotal;
+      element.totalAmount = eachtotal;
+      double tax_code = double.parse(element.tax_code) / 100;
+      double afterDiscountedAmount = eachtotal - discount_amt;
+
+      double vat_amount = (afterDiscountedAmount * tax_code) / (1 + tax_code);
+      element.vatafterdiscount = vat_amount;
+
+      element.subtotalafterdiscount = (afterDiscountedAmount - vat_amount);
+      element.totalafterdiscount = afterDiscountedAmount;
+      //discount percentage
+      element.discount_percentage = (element.discount * 100) / eachtotal;
+      element.discountpercentagevalue = element.discount_percentage;
+    });
+    footer_discount_Pecentage = (footer_discount * 100) / _total_amount;
+  }
 
   void calculateDiscountFromFooterDiscount() {
     bool isPercentage = false;
@@ -41,23 +91,22 @@ class CartModel extends Model {
     cart.forEach((element) {
       double rate = double.parse(element.rate);
       double eachtotal = double.parse(element.quantity) * rate;
-      element.totalAmount = eachtotal.toString();
+      element.totalAmount = eachtotal;
 
       double discount_amt = (eachtotal / itemTotal) * footer_discount;
-      element.discountvalue = discount_amt.toString();
+      element.discountvalue = discount_amt;
       double tax_code = double.parse(element.tax_code) / 100;
       double afterDiscountedAmount = eachtotal - discount_amt;
 
       double vat_amount = (afterDiscountedAmount * tax_code) / (1 + tax_code);
-      element.vatafterdiscount = vat_amount.toString();
+      element.vatafterdiscount = vat_amount;
 
-      element.subtotalafterdiscount =
-          (afterDiscountedAmount - vat_amount).toString();
-      element.totalafterdiscount = afterDiscountedAmount.toStringAsFixed(2);
+      element.subtotalafterdiscount = (afterDiscountedAmount - vat_amount);
+      element.totalafterdiscount = afterDiscountedAmount;
 
       double discount_percentage = (discount_amt * 100) / eachtotal;
-      element.discount_percentage = discount_percentage.toString();
-      element.discountpercentagevalue = discount_percentage.toString();
+      element.discount_percentage = discount_percentage;
+      element.discountpercentagevalue = discount_percentage;
     });
     double _total_amount = getMaxDiscount();
     footer_discount_Pecentage = (footer_discount * 100) / _total_amount;
@@ -74,12 +123,17 @@ class CartModel extends Model {
   }
 
   void calculateTotalRate() {
-    calculateDiscountFromFooterDiscount();
+    if (LineDiscountEnabled) {
+      calculateDiscountFromLineTotal();
+    } else {
+      calculateDiscountFromFooterDiscount();
+    }
     total_with_out_vat = 0;
     totalvat = 0;
     subTotal = 0;
     totaldiscount = 0;
     net_total = 0;
+    footer_discount = 0;
     cart.forEach((cal) {
       totaldiscount += double.parse(cal.discountvalue.toString());
 
@@ -91,7 +145,8 @@ class CartModel extends Model {
       total_with_out_vat += double.parse(cal.subtotalafterdiscount.toString());
 
       subTotal += eachtotal;
-      totalvat += double.parse(cal.vatafterdiscount);
+      totalvat += cal.vatafterdiscount;
+      footer_discount += cal.discountvalue;
     });
     net_total = subTotal - footer_discount;
     notifyListeners();
@@ -112,7 +167,11 @@ class CartModel extends Model {
     total_with_out_vat = 0;
     totalvat = 0;
     totaldiscount = 0;
+    footer_discount = 0;
+    footer_discount_Pecentage = 0;
+    footer_discount_text = "";
     subTotal = 0;
+    calculateTotalRate();
     notifyListeners();
   }
 

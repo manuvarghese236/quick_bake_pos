@@ -16,8 +16,8 @@ class _LoginState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
   @override
   String code = '';
-  String username = '';
-  String password = '';
+  String username = 'rakadmnin';
+  String password = 'demo';
   bool _securePassword = true;
 
   //load variable
@@ -92,7 +92,7 @@ class _LoginState extends State<Login> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.asset('assets/images/pay.png'),
+                          Image.asset('assets/images/logo.png'),
                         ],
                       ),
                     ),
@@ -242,18 +242,18 @@ class _LoginState extends State<Login> {
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius:
                                             BorderRadius.circular(5.0),
-                                        borderSide: BorderSide(
+                                        borderSide: const BorderSide(
                                           color: Colors.green,
                                           width: 1.0,
                                         ),
                                       ),
-                                      hintStyle: TextStyle(
+                                      hintStyle: const TextStyle(
                                           fontFamily: 'Montserrat',
                                           color:
                                               Color.fromRGBO(181, 184, 203, 1),
                                           fontWeight: FontWeight.w400,
                                           fontSize: 14),
-                                      contentPadding: EdgeInsets.fromLTRB(
+                                      contentPadding: const EdgeInsets.fromLTRB(
                                           20.0, 15.0, 20.0, 15.0),
                                       suffixIcon: IconButton(
                                         onPressed: showHide,
@@ -289,8 +289,10 @@ class _LoginState extends State<Login> {
                                               });
                                               final dynamic userloginresponse =
                                                   //"DEHNEE"
-                                                  await API.loginAPI("STAGING",
-                                                      username, password);
+                                                  await API.loginAPI(
+                                                      "QUICKBAKE",
+                                                      username,
+                                                      password);
                                               if (userloginresponse['status'] ==
                                                   'success') {
                                                 final dynamic prefresult = await API.addPrefferenceUserDetails(
@@ -311,11 +313,13 @@ class _LoginState extends State<Login> {
                                                     userloginresponse["data"]
                                                         ["trn_no"],
                                                     API.imgurl +
-                                                        userloginresponse[
-                                                                "data"]
+                                                        userloginresponse["data"]
                                                             ["company_logo"],
                                                     userloginresponse["data"]
                                                             ["warehouse_id"]
+                                                        .toString(),
+                                                    userloginresponse["data"]
+                                                            ["warehouse_name"]
                                                         .toString(),
                                                     userloginresponse['data'][
                                                             'master_company_id']
@@ -394,7 +398,7 @@ class _LoginState extends State<Login> {
                                                     .width /
                                                 2.5,
                                             height: 48,
-                                            child: Center(
+                                            child: const Center(
                                               child: Text(
                                                 "LOGIN",
                                                 style: TextStyle(
@@ -410,12 +414,17 @@ class _LoginState extends State<Login> {
                                   ],
                                 ),
                               ),
+                              Text(
+                                API.baseurl,
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.grey),
+                              )
                             ],
                           ),
                         ),
                       ),
                     ),
-                  ))
+                  )),
                 ],
               ),
             ),

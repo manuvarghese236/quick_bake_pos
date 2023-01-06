@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:windowspos/api/api.dart';
 import 'package:windowspos/models/brandmodel.dart';
 import 'package:windowspos/models/locationmodel.dart';
@@ -19,12 +20,16 @@ class _StocksListState extends State<StocksList> {
   List<dynamic> storelist = [];
   initState() {
     super.initState();
+    loadInitSetting();
     setState(() {
       load = true;
     });
     Future.delayed(Duration(seconds: 0), () async {
+      String selectedLocationId =
+          selectedlocation.isEmpty ? "" : selectedlocation["id"].toString();
+
       final dynamic storelistresponse = await API.storeListAPI(
-          "", "", "", stocktype ? "1" : "2", widget.token);
+          "", "", selectedLocationId, stocktype ? "1" : "2", widget.token);
       print(storelistresponse);
       setState(() {
         storelist = storelistresponse["data"];
@@ -35,6 +40,18 @@ class _StocksListState extends State<StocksList> {
 
   Map<String, dynamic> selectedbrand = {};
   Map<String, dynamic> selectedlocation = {};
+  loadInitSetting() async {
+    SharedPreferences blueskydehneepos = await SharedPreferences.getInstance();
+    String user_id = blueskydehneepos.getString("user_id").toString();
+    String user_name = blueskydehneepos.getString("name").toString();
+
+    String warehouse_id = blueskydehneepos.getString("warehouse_id").toString();
+    String warehouse_name =
+        blueskydehneepos.getString("warehouse_name").toString();
+    setState(() {
+      selectedlocation = {"id": warehouse_id, "name": warehouse_name};
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

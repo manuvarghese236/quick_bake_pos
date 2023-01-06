@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\x64\Profile\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\flutter\x64\Profile\flutter_assemble</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\flutter\quickbake\build\windows\plugins\syncfusion_pdfviewer_windows\Profile\syncfusion_pdfviewer_windows_plugin.dll</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

@@ -1,3 +1,5 @@
+import 'package:windowspos/cart/cart.dart';
+
 class ItemSchema {
   final String id;
   final String partnumber;
@@ -11,21 +13,21 @@ class ItemSchema {
   final String unit_id;
   final List<dynamic> arr_units;
   final String tax_code;
-  String discount;
+  double discount;
   final String availableqty;
-  String discount_percentage;
-  String discountvalue;
-  String discountpercentagevalue;
+  double discount_percentage;
+  double discountvalue;
+  double discountpercentagevalue;
 
   ///This is the net paybale of the line item after discount;
-  String totalafterdiscount;
-  String vatafterdiscount;
-  String subtotalafterdiscount;
+  double totalafterdiscount;
+  double vatafterdiscount;
+  double subtotalafterdiscount;
 
   final String barcode;
 
   ///rate * qty  => total_amount
-  String totalAmount = "";
+  double totalAmount = 0;
 
   ItemSchema(
       {required this.id,
@@ -63,13 +65,18 @@ class ItemSchema {
       unit_id: json["unit_id"].toString(),
       arr_units: json["arr_units"],
       tax_code: json["tax_code"],
-      discount: json["discount"].toString(),
+      discount: SimpleConvert.safeDouble(json["discount"].toString()),
       availableqty: json["available_qty"].toString(),
-      discount_percentage: json["discount_percentage"].toString(),
-      discountvalue: json["discountvalue"].toString(),
-      discountpercentagevalue: json["discountpercentagevalue"].toString(),
-      totalafterdiscount: json["totalafterdiscount"].toString(),
-      vatafterdiscount: json["vatafterdiscount"].toString(),
-      subtotalafterdiscount: json["subtotalafterdiscount"].toString(),
+      discount_percentage:
+          SimpleConvert.safeDouble(json["discount_percentage"].toString()),
+      discountvalue: SimpleConvert.safeDouble(json["discountvalue"].toString()),
+      discountpercentagevalue:
+          SimpleConvert.safeDouble(json["discountpercentagevalue"].toString()),
+      totalafterdiscount:
+          SimpleConvert.safeDouble(json["totalafterdiscount"].toString()),
+      vatafterdiscount:
+          SimpleConvert.safeDouble(json["vatafterdiscount"].toString()),
+      subtotalafterdiscount:
+          SimpleConvert.safeDouble(json["subtotalafterdiscount"].toString()),
       barcode: json["bar_code"].toString());
 }

@@ -21,6 +21,7 @@ import 'package:windowspos/cart/cart.dart';
 import 'package:windowspos/frontend/addcustomer.dart';
 import 'package:windowspos/frontend/dashboard.dart';
 import 'package:windowspos/frontend/successpage.dart';
+import 'package:windowspos/models/contact.dart';
 import 'package:windowspos/models/customermodel.dart';
 import 'package:windowspos/models/itemmodel.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
@@ -51,18 +52,26 @@ class _HomePageState extends State<HomePage> {
   TextEditingController authorizationcodecontroller = TextEditingController();
   TextEditingController barcodeController = TextEditingController();
   TextEditingController discountController = TextEditingController();
+  FocusNode linediscountfocusnode = FocusNode();
+  FocusNode footerDiscountNode = FocusNode();
   FocusNode barcodeFocusNode = FocusNode();
+  FocusNode itemFocusnode = FocusNode();
+  var customerContactList = [];
+  String? selectedContact = null;
+  CustomerContact? selectedCustomerContact;
+  String userId = "0";
   // TextEditingController cashpluscardcashcontroller = TextEditingController();
   // TextEditingController cashpluscardcardcontroller = TextEditingController();
 
   double footer_discount = 0.0;
   String footer_discount_text = "0.00";
-
+  bool homeDelivery = false;
   late FocusNode focusnode;
   late FocusNode qtyfocusnode;
   dynamic imagebytes;
   Uint8List? imgdatabytes;
   Uint8List? imgrowdatabytes;
+
   Future getSetting() async {
     try {
       SharedPreferences blueskydehneepos =
@@ -76,6 +85,7 @@ class _HomePageState extends State<HomePage> {
         barcodeswitch = false;
         print(" barcodenabled  => N");
       }
+      userId = blueskydehneepos.getString("user_id").toString();
       setState(() {});
     } catch (ex) {
       print(" Barcode Ex" + ex.toString());
@@ -91,7 +101,6 @@ class _HomePageState extends State<HomePage> {
         [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     focusnode = FocusNode();
     qtyfocusnode = FocusNode();
-
     try {
       Future.delayed(const Duration(seconds: 0), () async {
         setState(() {
@@ -141,14 +150,14 @@ class _HomePageState extends State<HomePage> {
     } catch (ex) {}
   }
 
-  String cashcard_cash = "0.00";
-  String cashcard_card = "0.00";
+  String cash_amount = "0.00";
+  String card_amount = "0.00";
 
   calculateReceivedAmount() {
     setState(() {
       receivedamountcontroller.text =
-          (double.parse(cashcard_card == "" ? "0.00" : cashcard_card) +
-                  double.parse(cashcard_cash == "" ? "0.00" : cashcard_cash))
+          (double.parse(card_amount == "" ? "0.00" : card_amount) +
+                  double.parse(cash_amount == "" ? "0.00" : cash_amount))
               .toStringAsFixed(2);
     });
   }
@@ -175,11 +184,13 @@ class _HomePageState extends State<HomePage> {
   // Uint8List? imgdatabytes;
 
   List<dynamic> receipttype = [
-    {"type": "Select", "code": ""},
     {"type": "Cash", "code": "CH"},
     {"type": "Card", "code": "CA"},
     {"type": "Cash + Card", "code": "CC"},
+    {"type": "Credit Sale", "code": "CR"},
   ];
+  //removed select receipt type and set cash as default.
+// {"type": "Select", "code": ""},
 
   Map<String, dynamic> selectedreceipttype = {};
 
@@ -224,7 +235,9 @@ class _HomePageState extends State<HomePage> {
       Map<String, dynamic> itemdetails) async {
     num total = 0.00;
     num totalafterdiscountpercentage = 0.00;
-
+    if (itemdetails["quantity"] == "" || itemdetails["quantity"] == null) {
+      itemdetails["quantity"] = "0";
+    }
     print("called checkTotal : Inside checking total before adding to cart");
     print(itemdetails);
 
@@ -232,9 +245,10 @@ class _HomePageState extends State<HomePage> {
         double.parse(itemdetails["quantity"].toString()));
     print("The total after discount only");
     print(totalbeforediscount);
+
     if (double.parse(itemdetails["discount_percentage"].toString()) == 0) {
       total = totalbeforediscount -
-          double.parse(itemdetails["discount"].toString());
+          SimpleConvert.safeDouble(itemdetails["discount"].toString());
     } else {
       totalafterdiscountpercentage = (totalbeforediscount *
               double.parse(itemdetails["discount_percentage"].toString())) /
@@ -255,11 +269,13 @@ class _HomePageState extends State<HomePage> {
     return {
       "total": double.parse(total.toString()).toStringAsFixed(6),
       "discountvalue":
-          double.parse(itemdetails["discount"].toString()).toStringAsFixed(6),
-      "discountpercentagevalue":
-          double.parse(totalafterdiscountpercentage.toString())
+          SimpleConvert.safeDouble(itemdetails["discount"].toString())
               .toStringAsFixed(6),
-      "subtotalafterdiscount": ((double.parse(total.toString()) * 100) /
+      "discountpercentagevalue":
+          SimpleConvert.safeDouble(totalafterdiscountpercentage.toString())
+              .toStringAsFixed(6),
+      "subtotalafterdiscount": ((SimpleConvert.safeDouble(total.toString()) *
+                  100) /
               (100 +
                   double.parse(double.parse(itemdetails["tax_code"].toString())
                       .toStringAsFixed(1))))
@@ -299,32 +315,23 @@ class _HomePageState extends State<HomePage> {
 
   addProducttoTable(model) async {
     if (model.checkItems(itemdetails["id"], model.cart)) {
-      if (barcodeswitch) {
-        var product_id = itemdetails["id"];
-        model.cart.forEach((element) {
-          if (element.id == product_id) {
-            double quantity = double.parse(element.quantity);
-            quantity++;
-            element.quantity = quantity.toInt().toString();
-          }
-          model.calculateTotalRate();
-          setState(() {
-            itemdetails = {};
-          });
-        });
-      } else {
-        Get.snackbar(
-            maxWidth: MediaQuery.of(context).size.width / 4,
-            "Failed",
-            "Product already added",
-            backgroundColor: Colors.red,
-            colorText: Colors.white);
-      }
+      var product_id = itemdetails["id"];
+      model.cart.forEach((element) {
+        if (element.id == product_id) {
+          double quantity = double.parse(element.quantity);
+
+          double newQty = double.parse(itemdetails["quantity"].toString());
+          quantity += newQty;
+          element.quantity = quantity.toInt().toString();
+        }
+        model.calculateTotalRate();
+      });
     } else {
       final dynamic checkcalculateddata = await checkTotal(itemdetails);
       print("The calculated data");
       print(checkcalculateddata);
-      model.addProduct(ItemSchema(
+      model.addProduct(
+        ItemSchema(
           id: itemdetails["id"],
           partnumber: itemdetails["part_number"],
           description: itemdetails["description"],
@@ -340,18 +347,33 @@ class _HomePageState extends State<HomePage> {
           discount: itemdetails["discount"],
           availableqty: itemdetails["available_qty"],
           discount_percentage: itemdetails["discount_percentage"],
-          discountvalue: checkcalculateddata["discountvalue"],
-          discountpercentagevalue:
-              checkcalculateddata["discountpercentagevalue"],
-          totalafterdiscount: checkcalculateddata["total"],
-          vatafterdiscount: checkcalculateddata["vatafterdiscount"],
-          subtotalafterdiscount: checkcalculateddata["subtotalafterdiscount"],
-          barcode: itemdetails["bar_code"].toString()));
+          discountvalue: SimpleConvert.safeDouble(
+              checkcalculateddata["discountvalue"].toString()),
+          discountpercentagevalue: SimpleConvert.safeDouble(
+              checkcalculateddata["discountpercentagevalue"].toString()),
+          totalafterdiscount:
+              SimpleConvert.safeDouble(checkcalculateddata["total"].toString()),
+          vatafterdiscount: SimpleConvert.safeDouble(
+              checkcalculateddata["vatafterdiscount"].toString()),
+          subtotalafterdiscount: SimpleConvert.safeDouble(
+              checkcalculateddata["subtotalafterdiscount"].toString()),
+          barcode: itemdetails["bar_code"].toString(),
+        ),
+      );
       model.calculateTotalRate();
+
+      focusnode.requestFocus();
+      itemFocusnode.requestFocus();
+      if (model.LineDiscountEnabled) {
+        discountController.text = model.footer_discount.toString();
+      }
       setState(() {
         itemdetails = {};
       });
     }
+    setState(() {
+      itemdetails = {};
+    });
   }
 
   @override
@@ -381,7 +403,7 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           children: [
                             Container(
-                              height: 110,
+                              height: 130,
                               width: MediaQuery.of(context).size.width,
                               // color: Colors.red,
                               child: Row(
@@ -595,8 +617,24 @@ class _HomePageState extends State<HomePage> {
                                                                     .location,
                                                           };
                                                           setState(() {
+                                                            selectedContact =
+                                                                null;
                                                             customerdetails =
                                                                 data;
+                                                            customerContactList =
+                                                                itemslist
+                                                                    .arr_contacts;
+                                                            if (customerContactList
+                                                                    .length >
+                                                                0) {
+                                                              selectedContact =
+                                                                  customerContactList[
+                                                                              0]
+                                                                          ["id"]
+                                                                      .toString();
+                                                            }
+                                                            print(
+                                                                customerContactList);
                                                             focusnode
                                                                 .requestFocus();
                                                           });
@@ -618,12 +656,13 @@ class _HomePageState extends State<HomePage> {
                                           child: Column(
                                             children: [
                                               const SizedBox(
-                                                height: 8,
+                                                height: 4,
                                               ),
                                               GestureDetector(
                                                 onTap: () {
                                                   setState(() {
                                                     customerdetails = {};
+                                                    customerContactList = [];
                                                   });
                                                 },
                                                 child: Padding(
@@ -664,6 +703,110 @@ class _HomePageState extends State<HomePage> {
                                                         size: 15,
                                                       )
                                                     ],
+                                                  ),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 1,
+                                                        horizontal: 7),
+                                                child:
+                                                    DropdownButtonHideUnderline(
+                                                  child:
+                                                      DropdownButton<dynamic>(
+                                                    isExpanded: true,
+                                                    icon: Icon(
+                                                        Icons.contact_mail),
+                                                    value: customerContactList
+                                                            .isEmpty
+                                                        ? null
+                                                        : (selectedContact ==
+                                                                null)
+                                                            ? null
+                                                            : selectedContact
+                                                                .toString(),
+                                                    hint: const Text(
+                                                      'Select Contact',
+                                                      style: TextStyle(
+                                                          color: Color.fromRGBO(
+                                                              135, 141, 186, 1),
+                                                          fontFamily:
+                                                              'Montserrat',
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          fontSize: 14),
+                                                    ),
+                                                    isDense: true,
+                                                    onChanged: (data) async {
+                                                      print(data);
+                                                      selectedContact =
+                                                          data.toString();
+                                                      customerContactList
+                                                          .forEach((element) {
+                                                        if (element["id"] ==
+                                                            selectedContact) {
+                                                          selectedCustomerContact = CustomerContact(
+                                                              id: element["id"]
+                                                                  .toString(),
+                                                              person_name: element[
+                                                                      "person_name"]
+                                                                  .toString(),
+                                                              contact_mobile_no:
+                                                                  element["person_name"]
+                                                                      .toString(),
+                                                              latitude: element[
+                                                                      "person_name"]
+                                                                  .toString(),
+                                                              longitude: element[
+                                                                      "person_name"]
+                                                                  .toString());
+                                                        }
+                                                      });
+                                                      setState(() {
+                                                        print(
+                                                            "Selected contact ");
+                                                      });
+                                                    },
+                                                    items: customerContactList
+                                                        .map((value) {
+                                                      return DropdownMenuItem<
+                                                              dynamic>(
+                                                          value: value["id"]
+                                                              .toString(),
+                                                          child: Container(
+                                                            decoration: BoxDecoration(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            5.0)),
+                                                            height: 20.0,
+                                                            padding:
+                                                                const EdgeInsets
+                                                                        .fromLTRB(
+                                                                    2.0,
+                                                                    2.0,
+                                                                    2.0,
+                                                                    0.0),
+                                                            child: Container(
+                                                              child: Text(
+                                                                value['person_name']
+                                                                    .toString()
+                                                                    .toUpperCase(),
+                                                                style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Montserrat',
+                                                                    color: API
+                                                                        .textcolor,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
+                                                                    fontSize:
+                                                                        14),
+                                                              ),
+                                                            ),
+                                                          ));
+                                                    }).toList(),
                                                   ),
                                                 ),
                                               ),
@@ -748,42 +891,29 @@ class _HomePageState extends State<HomePage> {
                                                   ],
                                                 ),
                                               ),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 7, right: 7, top: 0),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      width: 40,
-                                                      child: const Padding(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                                horizontal: 5),
-                                                        child: FaIcon(
-                                                          FontAwesomeIcons
-                                                              .envelope,
-                                                          color: Colors.black,
-                                                          size: 15,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      child: Row(
-                                                        children: [
-                                                          Text(
-                                                            customerdetails[
-                                                                    "email"]
-                                                                .toString()
-                                                                .toUpperCase(),
-                                                            style: API
-                                                                .textdetailstyle(),
-                                                          )
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
+                                              // Padding(
+                                              //   padding: const EdgeInsets.only(
+                                              //       left: 7, right: 7, top: 0),
+                                              //   child: Row(
+                                              //     mainAxisSize:
+                                              //         MainAxisSize.max,
+                                              //     mainAxisAlignment:
+                                              //         MainAxisAlignment
+                                              //             .spaceBetween,
+                                              //     children: [
+                                              //       Text(
+                                              //           "Delivery at Location"),
+                                              //       Switch(
+                                              //           value: homeDelivery,
+                                              //           onChanged: (value) {
+                                              //             setState(() {
+                                              //               homeDelivery =
+                                              //                   value;
+                                              //             });
+                                              //           }),
+                                              //     ],
+                                              //   ),
+                                              // ),
                                             ],
                                           ),
                                         ),
@@ -805,10 +935,7 @@ class _HomePageState extends State<HomePage> {
                                             children: [
                                               Container(
                                                 // color: Colors.red,
-                                                width: MediaQuery.of(context)
-                                                        .size
-                                                        .width /
-                                                    7,
+                                                width: 80,
                                                 height: 80,
                                                 // color: Colors.green,
                                                 child: CachedNetworkImage(
@@ -901,7 +1028,7 @@ class _HomePageState extends State<HomePage> {
                                             height: 80,
                                             // color: Colors.green,
                                             child: Image.asset(
-                                                "assets/images/dehnee.jpeg"),
+                                                "assets/images/logo-b.png"),
                                             // Image.asset(
                                             //                                             "assets/images/logo1.png",
                                             //                                             height: MediaQuery.of(context)
@@ -1114,7 +1241,7 @@ class _HomePageState extends State<HomePage> {
                                                                       10.0),
                                                               // ignore: unnecessary_null_comparison
                                                               hintText:
-                                                                  'Enter Item Name',
+                                                                  'Enter Items Name',
                                                               border: OutlineInputBorder(
                                                                   borderRadius:
                                                                       BorderRadius.circular(4.0))),
@@ -1123,7 +1250,7 @@ class _HomePageState extends State<HomePage> {
                                                             "This is the barcode section");
                                                         print(val);
                                                         if (val.isNotEmpty &&
-                                                            val.length >= 6) {
+                                                            val.length >= 2) {
                                                           final List<dynamic>
                                                               searchresponse =
                                                               await API
@@ -1254,6 +1381,7 @@ class _HomePageState extends State<HomePage> {
                                                               qtyfocusnode
                                                                   .requestFocus();
                                                             });
+
                                                             addProducttoTable(
                                                                 model);
                                                             barcodeController
@@ -1276,6 +1404,9 @@ class _HomePageState extends State<HomePage> {
                                                   child: TypeAheadField(
                                                       textFieldConfiguration:
                                                           TextFieldConfiguration(
+                                                        autofocus: true,
+                                                        focusNode:
+                                                            itemFocusnode,
                                                         style: TextStyle(
                                                             color:
                                                                 API.textcolor,
@@ -1584,71 +1715,86 @@ class _HomePageState extends State<HomePage> {
                                                     13,
                                                 height: 44,
                                                 // color: Colors.red,
-                                                child: TextFormField(
-                                                  autofocus: true,
-                                                  focusNode: qtyfocusnode,
-                                                  initialValue:
-                                                      itemdetails["quantity"],
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  style: TextStyle(
-                                                      color: API.textcolor,
-                                                      fontWeight:
-                                                          FontWeight.w400),
-                                                  decoration: InputDecoration(
-                                                      filled: true,
-                                                      fillColor:
-                                                          const Color.fromRGBO(
-                                                              248, 248, 253, 1),
-                                                      enabledBorder:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4.0),
-                                                        borderSide: BorderSide(
-                                                          color:
-                                                              API.bordercolor,
-                                                          width: 1.0,
-                                                        ),
-                                                      ),
-                                                      focusedBorder:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4.0),
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color: Colors.green,
-                                                          width: 1.0,
-                                                        ),
-                                                      ),
-                                                      hintStyle: const TextStyle(
-                                                          fontFamily:
-                                                              'Montserrat',
-                                                          color: Color.fromRGBO(
-                                                              181, 184, 203, 1),
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          fontSize: 14),
-                                                      contentPadding:
-                                                          const EdgeInsets.fromLTRB(
-                                                              10.0,
-                                                              10.0,
-                                                              10.0,
-                                                              10.0),
-                                                      // ignore: unnecessary_null_comparison
-                                                      hintText: 'QTY',
-                                                      border: OutlineInputBorder(
+                                                child: CallbackShortcuts(
+                                                  bindings: {
+                                                    const SingleActivator(
+                                                        LogicalKeyboardKey
+                                                            .enter): () =>
+                                                        addProducttoTable(
+                                                            model),
+                                                  },
+                                                  child: TextFormField(
+                                                    autofocus: true,
+                                                    focusNode: qtyfocusnode,
+                                                    initialValue:
+                                                        itemdetails["quantity"],
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                    style: TextStyle(
+                                                        color: API.textcolor,
+                                                        fontWeight:
+                                                            FontWeight.w400),
+                                                    decoration: InputDecoration(
+                                                        filled: true,
+                                                        fillColor:
+                                                            const Color.fromRGBO(
+                                                                248, 248, 253, 1),
+                                                        enabledBorder:
+                                                            OutlineInputBorder(
                                                           borderRadius:
                                                               BorderRadius
-                                                                  .circular(4.0))),
-                                                  onChanged: (val) {
-                                                    setState(() {
-                                                      itemdetails["quantity"] =
-                                                          val;
-                                                    });
-                                                    print(itemdetails);
-                                                  },
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              BorderSide(
+                                                            color:
+                                                                API.bordercolor,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                            color: Colors.green,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        hintStyle: const TextStyle(
+                                                            fontFamily:
+                                                                'Montserrat',
+                                                            color: Color.fromRGBO(
+                                                                181,
+                                                                184,
+                                                                203,
+                                                                1),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontSize: 14),
+                                                        contentPadding:
+                                                            const EdgeInsets.fromLTRB(
+                                                                10.0,
+                                                                10.0,
+                                                                10.0,
+                                                                10.0),
+                                                        // ignore: unnecessary_null_comparison
+                                                        hintText: 'QTY',
+                                                        border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                    4.0))),
+                                                    onChanged: (val) {
+                                                      setState(() {
+                                                        itemdetails[
+                                                            "quantity"] = val;
+                                                      });
+                                                      print(itemdetails);
+                                                    },
+                                                  ),
                                                 ),
                                               ),
                                             )
@@ -1797,6 +1943,125 @@ class _HomePageState extends State<HomePage> {
                                                 ),
                                               ),
                                             ),
+                                          ],
+                                        )
+                                      : const SizedBox(),
+                                  itemdetails.isNotEmpty
+                                      ? Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            Text(
+                                              "Discount",
+                                              textAlign: TextAlign.start,
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontFamily: 'Montserrat'),
+                                            ),
+                                            Container(
+                                                width: MediaQuery.of(context)
+                                                        .size
+                                                        .width /
+                                                    13,
+                                                height: 44,
+                                                // color: Colors.red,
+                                                child: CallbackShortcuts(
+                                                  bindings: {
+                                                    const SingleActivator(
+                                                        LogicalKeyboardKey
+                                                            .enter): () =>
+                                                        LineAddItems(model)
+                                                  },
+                                                  child: TextFormField(
+                                                    autofocus: true,
+                                                    focusNode:
+                                                        linediscountfocusnode,
+                                                    initialValue:
+                                                        itemdetails["discount"]
+                                                            .toString(),
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                    style: TextStyle(
+                                                        color: API.textcolor,
+                                                        fontWeight:
+                                                            FontWeight.w400),
+                                                    decoration: InputDecoration(
+                                                        filled: true,
+                                                        fillColor:
+                                                            const Color.fromRGBO(
+                                                                248, 248, 253, 1),
+                                                        enabledBorder:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              BorderSide(
+                                                            color:
+                                                                API.bordercolor,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                            color: Colors.green,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        hintStyle: const TextStyle(
+                                                            fontFamily:
+                                                                'Montserrat',
+                                                            color: Color.fromRGBO(
+                                                                181,
+                                                                184,
+                                                                203,
+                                                                1),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontSize: 14),
+                                                        contentPadding:
+                                                            const EdgeInsets.fromLTRB(
+                                                                10.0,
+                                                                10.0,
+                                                                10.0,
+                                                                10.0),
+                                                        // ignore: unnecessary_null_comparison
+                                                        hintText: 'Discount',
+                                                        border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                    4.0))),
+                                                    onChanged: (val) {
+                                                      setState(() {
+                                                        itemdetails[
+                                                                "discount"] =
+                                                            SimpleConvert
+                                                                .safeDouble(val
+                                                                    .toString());
+                                                        if (SimpleConvert
+                                                                .safeDouble(val
+                                                                    .toString()) >
+                                                            0) {
+                                                          model.LineDiscountEnabled =
+                                                              true;
+                                                          true;
+                                                        }
+                                                      });
+                                                      print(itemdetails);
+                                                    },
+                                                  ),
+                                                ))
                                           ],
                                         )
                                       : const SizedBox(),
@@ -1972,7 +2237,7 @@ class _HomePageState extends State<HomePage> {
                                   itemdetails.isNotEmpty
                                       ? IconButton(
                                           onPressed: () async {
-                                            addProducttoTable(model);
+                                            LineAddItems(model);
                                           },
                                           icon: const FaIcon(
                                             FontAwesomeIcons.checkCircle,
@@ -2478,7 +2743,9 @@ class _HomePageState extends State<HomePage> {
                                                                         // (double.parse(model.cart[index].discount.toString()) *
                                                                         //         double.parse(model.cart[index].quantity.toString()))
                                                                         //     .toStringAsFixed(2),
-                                                                        (double.parse(model.cart[index].discountvalue))
+                                                                        model
+                                                                            .cart[index]
+                                                                            .discountvalue
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -2594,6 +2861,9 @@ class _HomePageState extends State<HomePage> {
                                                                               () {
                                                                             model.removeProduct(model.cart[index].id);
                                                                             model.calculateTotalRate();
+                                                                            if (model.LineDiscountEnabled) {
+                                                                              discountController.text = model.footer_discount.toString();
+                                                                            }
                                                                           },
                                                                           icon: const Icon(
                                                                               Icons.delete,
@@ -3313,7 +3583,7 @@ class _HomePageState extends State<HomePage> {
                                                       children: [
                                                         RawMaterialButton(
                                                           onPressed: () {
-                                                            model.removeAll();
+                                                            ClearAllData(model);
                                                           },
                                                           elevation: 2.0,
                                                           fillColor: Colors.red,
@@ -3431,14 +3701,17 @@ class _HomePageState extends State<HomePage> {
                                                                       receivedamountcontroller
                                                                           .text);
                                                                   if (receivedamountcontroller
-                                                                          .text ==
-                                                                      "") {
+                                                                              .text ==
+                                                                          "" &&
+                                                                      selectedreceipttype[
+                                                                              'code'] !=
+                                                                          "CR") {
                                                                     Get.snackbar(
                                                                         maxWidth:
                                                                             MediaQuery.of(context).size.width /
                                                                                 4,
                                                                         "Failed",
-                                                                        "Please enter received amount"
+                                                                        "Please enter received amount."
                                                                             .toString(),
                                                                         backgroundColor:
                                                                             Colors
@@ -3450,343 +3723,168 @@ class _HomePageState extends State<HomePage> {
                                                                         "This is the total price");
                                                                     print(model
                                                                         .total_with_out_vat);
-                                                                    if (double.parse(receivedamountcontroller
-                                                                            .text) >=
-                                                                        double.parse(model
-                                                                            .total_with_out_vat
-                                                                            .toString())) {
-                                                                      print(
-                                                                          "The height");
-                                                                      print(MediaQuery.of(
-                                                                              context)
-                                                                          .size
-                                                                          .height);
-                                                                      showDialog(
-                                                                          barrierDismissible:
-                                                                              false,
-                                                                          context:
-                                                                              context,
-                                                                          builder:
-                                                                              (BuildContext context) {
-                                                                            return StatefulBuilder(builder:
-                                                                                (context, StateSetter setStateDialog) {
-                                                                              return Dialog(
-                                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-                                                                                child: Container(
-                                                                                  width: MediaQuery.of(context).size.width / 2.5,
-                                                                                  height: MediaQuery.of(context).size.height < 350
-                                                                                      ? MediaQuery.of(context).size.height
-                                                                                      : MediaQuery.of(context).size.height > 350 && MediaQuery.of(context).size.height < 600
-                                                                                          ? MediaQuery.of(context).size.height / 2
-                                                                                          : MediaQuery.of(context).size.height / 3,
-                                                                                  // color:Colors.blue,
-                                                                                  child: dialogueloading
-                                                                                      ? Center(
-                                                                                          child: CircularProgressIndicator(
-                                                                                            color: API.tilecolor,
-                                                                                            strokeWidth: 1,
-                                                                                          ),
-                                                                                        )
-                                                                                      : FittedBox(
-                                                                                          child: Column(
-                                                                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                                                                            children: [
-                                                                                              Align(
-                                                                                                alignment: Alignment.centerRight,
-                                                                                                child: Container(
-                                                                                                  // color: Colors.red,
-                                                                                                  child: Row(
-                                                                                                    mainAxisAlignment: MainAxisAlignment.end,
-                                                                                                    children: [
-                                                                                                      IconButton(
-                                                                                                          onPressed: () {
-                                                                                                            setStateDialog(() {
-                                                                                                              selectedsalesman = {};
-                                                                                                            });
-                                                                                                            Navigator.pop(context);
-                                                                                                          },
-                                                                                                          icon: const Icon(
-                                                                                                            Icons.close,
-                                                                                                            color: Colors.red,
-                                                                                                          ))
-                                                                                                    ],
-                                                                                                  ),
-                                                                                                ),
-                                                                                              ),
-                                                                                              Container(
-                                                                                                margin: const EdgeInsets.only(left: 20, right: 20, top: 5, bottom: 5),
-                                                                                                width: MediaQuery.of(context).size.width / 3,
-                                                                                                child: Row(
-                                                                                                  mainAxisAlignment: MainAxisAlignment.start,
-                                                                                                  children: [
-                                                                                                    Text(
-                                                                                                      "SALESMAN",
-                                                                                                      style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, fontWeight: FontWeight.w400, color: API.textcolor),
-                                                                                                    ),
-                                                                                                  ],
-                                                                                                ),
-                                                                                              ),
-                                                                                              selectedsalesman.isNotEmpty
-                                                                                                  ? GestureDetector(
-                                                                                                      onTap: () {
-                                                                                                        setStateDialog(() {
-                                                                                                          selectedsalesman = {};
-                                                                                                        });
-                                                                                                      },
-                                                                                                      child: Container(
-                                                                                                        width: MediaQuery.of(context).size.width / 3,
-                                                                                                        height: 48,
-                                                                                                        decoration: BoxDecoration(
-                                                                                                            // border:
-                                                                                                            color: const Color.fromRGBO(248, 248, 253, 1),
-                                                                                                            borderRadius: BorderRadius.circular(4.0),
-                                                                                                            border: Border.all(color: Colors.green, width: 1.0)),
-                                                                                                        child: Padding(
-                                                                                                          padding: const EdgeInsets.fromLTRB(20.0, 15.0, 20.0, 15.0),
-                                                                                                          child: Row(
-                                                                                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                                                                            children: [
-                                                                                                              Container(
-                                                                                                                width: MediaQuery.of(context).size.width / 4.2,
-                                                                                                                child: Text(
-                                                                                                                  selectedsalesman['name'].toString().toString().toUpperCase(),
-                                                                                                                  overflow: TextOverflow.ellipsis,
-                                                                                                                  style: TextStyle(fontFamily: 'Montserrat', color: API.textcolor, fontWeight: FontWeight.w400, fontSize: 14),
-                                                                                                                ),
-                                                                                                              ),
-                                                                                                            ],
-                                                                                                          ),
-                                                                                                        ),
-                                                                                                      ),
-                                                                                                    )
-                                                                                                  : Container(
-                                                                                                      width: MediaQuery.of(context).size.width / 3,
-                                                                                                      child: TypeAheadField(
-                                                                                                          textFieldConfiguration: TextFieldConfiguration(
-                                                                                                            style: TextStyle(color: API.textcolor, fontWeight: FontWeight.w400),
-                                                                                                            decoration: InputDecoration(
-                                                                                                                filled: true,
-                                                                                                                fillColor: const Color.fromRGBO(248, 248, 253, 1),
-                                                                                                                enabledBorder: OutlineInputBorder(
-                                                                                                                  borderRadius: BorderRadius.circular(4.0),
-                                                                                                                  borderSide: const BorderSide(
-                                                                                                                    color: Colors.black,
-                                                                                                                    width: 1.0,
-                                                                                                                  ),
-                                                                                                                ),
-                                                                                                                focusedBorder: OutlineInputBorder(
-                                                                                                                  borderRadius: BorderRadius.circular(4.0),
-                                                                                                                  borderSide: const BorderSide(
-                                                                                                                    color: Colors.green,
-                                                                                                                    width: 1.0,
-                                                                                                                  ),
-                                                                                                                ),
-                                                                                                                hintStyle: const TextStyle(fontFamily: 'Montserrat', color: Color.fromRGBO(181, 184, 203, 1), fontWeight: FontWeight.w500, fontSize: 14),
-                                                                                                                contentPadding: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
-                                                                                                                // ignore: unnecessary_null_comparison
-                                                                                                                hintText: 'Enter Salesman',
-                                                                                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4.0))),
-                                                                                                          ),
-                                                                                                          suggestionsCallback: (value) async {
-                                                                                                            if (value == null) {
-                                                                                                              return await API.getSalesmanQueryList(value, false, widget.token);
-                                                                                                            } else {
-                                                                                                              return await API.getSalesmanQueryList(value, false, widget.token);
-                                                                                                            }
-                                                                                                          },
-                                                                                                          itemBuilder: (context, SalesManSchema? itemslist) {
-                                                                                                            final listdata = itemslist;
-                                                                                                            return ListTile(
-                                                                                                              title: Text(
-                                                                                                                "${listdata!.name.toUpperCase()}",
-                                                                                                                overflow: TextOverflow.ellipsis,
-                                                                                                                softWrap: false,
-                                                                                                                maxLines: 1,
-                                                                                                                style: TextStyle(fontFamily: 'Montserrat', color: API.textcolor, fontWeight: FontWeight.w500, fontSize: 14),
-                                                                                                              ),
-                                                                                                            );
-                                                                                                          },
-                                                                                                          onSuggestionSelected: (SalesManSchema? itemslist) async {
-                                                                                                            final data = {
-                                                                                                              'id': itemslist!.id,
-                                                                                                              'name': itemslist.name,
-                                                                                                            };
-                                                                                                            setStateDialog(() {
-                                                                                                              selectedsalesman = data;
-                                                                                                            });
-                                                                                                          }),
-                                                                                                    ),
-                                                                                              Container(
-                                                                                                margin: const EdgeInsets.only(left: 20, right: 20, top: 5, bottom: 5),
-                                                                                                width: MediaQuery.of(context).size.width / 3,
-                                                                                                child: Row(
-                                                                                                  mainAxisAlignment: MainAxisAlignment.start,
-                                                                                                  children: [
-                                                                                                    Text(
-                                                                                                      "PASSWORD",
-                                                                                                      style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, fontWeight: FontWeight.w400, color: API.textcolor),
-                                                                                                    ),
-                                                                                                  ],
-                                                                                                ),
-                                                                                              ),
-                                                                                              AbsorbPointer(
-                                                                                                  absorbing: selectedsalesman.isEmpty ? true : false,
-                                                                                                  child: Container(
-                                                                                                    margin: const EdgeInsets.only(left: 20, right: 20),
-                                                                                                    width: MediaQuery.of(context).size.width / 3,
-                                                                                                    child: TextFormField(
-                                                                                                      cursorColor: Colors.green,
-                                                                                                      style: const TextStyle(color: Colors.grey),
-                                                                                                      decoration: InputDecoration(
-                                                                                                          filled: true,
-                                                                                                          fillColor: const Color.fromRGBO(248, 248, 253, 1),
-                                                                                                          enabledBorder: OutlineInputBorder(
-                                                                                                            borderRadius: BorderRadius.circular(5.0),
-                                                                                                            borderSide: const BorderSide(
-                                                                                                              color: Colors.black,
-                                                                                                              width: 1.0,
-                                                                                                            ),
-                                                                                                          ),
-                                                                                                          focusedBorder: OutlineInputBorder(
-                                                                                                            borderRadius: BorderRadius.circular(5.0),
-                                                                                                            borderSide: const BorderSide(
-                                                                                                              color: Colors.green,
-                                                                                                              width: 1.0,
-                                                                                                            ),
-                                                                                                          ),
-                                                                                                          hintStyle: const TextStyle(fontFamily: 'Montserrat', color: Color.fromRGBO(181, 184, 203, 1), fontWeight: FontWeight.w400, fontSize: 14),
-                                                                                                          contentPadding: const EdgeInsets.fromLTRB(20.0, 15.0, 20.0, 15.0),
-                                                                                                          suffixIcon: IconButton(
-                                                                                                            onPressed: () {
-                                                                                                              setStateDialog(() {
-                                                                                                                _securePassword = !_securePassword;
-                                                                                                              });
-                                                                                                            },
-                                                                                                            icon: iconDisplay(_securePassword),
-                                                                                                          ),
-                                                                                                          hintText: "Enter Password",
-                                                                                                          // hintText: 'demo',
-                                                                                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0))),
-                                                                                                      validator: (val) => val!.length < 3 ? 'Enter Password' : null,
-                                                                                                      obscureText: _securePassword,
-                                                                                                      onChanged: (val) {
-                                                                                                        setStateDialog(() => password = (val));
-                                                                                                      },
-                                                                                                    ),
-                                                                                                  )),
-                                                                                              const SizedBox(
-                                                                                                height: 10,
-                                                                                              ),
-                                                                                              AbsorbPointer(
-                                                                                                absorbing: password == "" ? true : false,
-                                                                                                child: Container(
-                                                                                                  height: MediaQuery.of(context).size.height / 15,
-                                                                                                  // color: Colors.yellow,
-                                                                                                  child: Column(
-                                                                                                    children: <Widget>[
-                                                                                                      InkWell(
-                                                                                                        onTap: () async {
-                                                                                                          print("pressed button");
-                                                                                                          setStateDialog(() {
-                                                                                                            dialogueloading = true;
-                                                                                                          });
-                                                                                                          final dynamic loginvalidateresponse = await API.invoiceLoginValidateAPI(selectedsalesman["id"], password, widget.userdetails["warehouse_id"].toString(), widget.userdetails["master_company_id"].toString());
-                                                                                                          print(loginvalidateresponse);
-                                                                                                          if (loginvalidateresponse["status"] == "error") {
-                                                                                                            setStateDialog(() {
-                                                                                                              dialogueloading = false;
-                                                                                                            });
-                                                                                                            Get.snackbar(maxWidth: MediaQuery.of(context).size.width / 4, "Failed", loginvalidateresponse["message"].toString(), backgroundColor: Colors.red, colorText: Colors.white);
-                                                                                                          } else if (loginvalidateresponse["status"] == "success") {
-                                                                                                            //function for saving the details
-                                                                                                            // if (double.parse(receivedamountcontroller.text) >= double.parse(model.totalPrice.toString())) {
-                                                                                                            setState(() {
-                                                                                                              mainloading = true;
-                                                                                                            });
-                                                                                                            var received_amount = receivedamountcontroller.text.toString();
-                                                                                                            final dynamic calculationresponse = await API.convertData(model.cart);
-                                                                                                            final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(loginvalidateresponse["user_id"].toString(), customerdetails["id"], calculationresponse["items"], selectedreceipttype["code"], received_amount, authorizationcodecontroller.text.isEmpty ? "" : authorizationcodecontroller.text, widget.token, cashcard_cash.toString(), cashcard_card.toString(), footer_discount.toString(), model.footer_discount_Pecentage.toString());
-                                                                                                            if (saveinvoiceresponse["status"] == "success") {
-                                                                                                              model.removeAll();
-                                                                                                              selectedreceipttype = {};
-                                                                                                              receivedamountcontroller.text = "";
-                                                                                                              authorizationcodecontroller.text = "";
-                                                                                                              barcodeController.text = "";
-                                                                                                              barcodeController.clear();
-                                                                                                              discountController.clear();
-                                                                                                              footer_discount = 0;
-                                                                                                              model.footer_discount_Pecentage = 0;
-                                                                                                              model.footer_discount_text = "0.00";
+                                                                    if (selectedreceipttype["code"] ==
+                                                                            "CR" ||
+                                                                        double.parse(receivedamountcontroller.text) ==
+                                                                            model.net_total) {
+                                                                      // Real saving start here
+                                                                      var received_amount = receivedamountcontroller
+                                                                          .text
+                                                                          .toString();
+                                                                      final dynamic
+                                                                          calculationresponse =
+                                                                          await API
+                                                                              .convertData(model.cart);
+                                                                      final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(
+                                                                          userId,
+                                                                          customerdetails[
+                                                                              "id"],
+                                                                          selectedContact
+                                                                              .toString(),
+                                                                          calculationresponse[
+                                                                              "items"],
+                                                                          selectedreceipttype[
+                                                                              "code"],
+                                                                          received_amount,
+                                                                          authorizationcodecontroller.text.isEmpty
+                                                                              ? ""
+                                                                              : authorizationcodecontroller
+                                                                                  .text,
+                                                                          widget
+                                                                              .token,
+                                                                          cash_amount
+                                                                              .toString(),
+                                                                          card_amount
+                                                                              .toString(),
+                                                                          footer_discount
+                                                                              .toString(),
+                                                                          model
+                                                                              .footer_discount_Pecentage
+                                                                              .toString(),
+                                                                          homeDelivery,
+                                                                          model
+                                                                              .net_total
+                                                                              .toString());
+                                                                      if (saveinvoiceresponse[
+                                                                              "status"] ==
+                                                                          "success") {
+                                                                        model
+                                                                            .removeAll();
+                                                                        selectedreceipttype =
+                                                                            {};
+                                                                        receivedamountcontroller.text =
+                                                                            "";
+                                                                        authorizationcodecontroller.text =
+                                                                            "";
+                                                                        barcodeController.text =
+                                                                            "";
+                                                                        barcodeController
+                                                                            .clear();
+                                                                        discountController
+                                                                            .clear();
+                                                                        footer_discount =
+                                                                            0;
+                                                                        model.footer_discount_Pecentage =
+                                                                            0;
+                                                                        model.footer_discount_text =
+                                                                            "0.00";
 
-                                                                                                              const PaperSize paper = PaperSize.mm80;
-                                                                                                              final profile = await CapabilityProfile.load();
-                                                                                                              final printer = NetworkPrinter(paper, profile);
-                                                                                                              print(widget.usbdevice);
-                                                                                                              if (widget.usbdevice.isNotEmpty) {
-                                                                                                                var footerDeatils = {
-                                                                                                                  "sub_total": saveinvoiceresponse["sub_total"],
-                                                                                                                  "vat": saveinvoiceresponse["total_tax_amount"],
-                                                                                                                  "total_without_vat": saveinvoiceresponse["total_wo_vat"],
-                                                                                                                  "discount": saveinvoiceresponse["total_discount"],
-                                                                                                                  "grand_total": saveinvoiceresponse["grand_total"],
-                                                                                                                  "recipt_type": saveinvoiceresponse["receipt_type"],
-                                                                                                                  "received_amt": saveinvoiceresponse["received_amount"]
-                                                                                                                };
-                                                                                                                API.printInvoiceWindows(BluetoothPrinter(deviceName: widget.usbdevice["devicename"], vendorId: widget.usbdevice["vendorid"], productId: widget.usbdevice["productid"]), printer, saveinvoiceresponse["items"], imagebytes, saveinvoiceresponse["invoice_no"].toString(), saveinvoiceresponse["customer_name"], saveinvoiceresponse["invoice_date"], saveinvoiceresponse["warehouse_name"], widget.userdetails["company_name"], widget.userdetails["billing_address"], widget.userdetails["genral_phno"], saveinvoiceresponse["customer_phone"], saveinvoiceresponse["sales_man"], saveinvoiceresponse["receipt_type"], saveinvoiceresponse["received_amount"], widget.userdetails["trn_no"], saveinvoiceresponse["total_amount"], saveinvoiceresponse["total_discount"], saveinvoiceresponse["total_wo_vat"], saveinvoiceresponse["total_tax_amount"].toString(), saveinvoiceresponse["grand_total"].toString(), saveinvoiceresponse["customer_address"], saveinvoiceresponse["received_cash_amount"].toString(), saveinvoiceresponse["received_card_amount"].toString(), saveinvoiceresponse["invoice_created_date_time"].toString(), saveinvoiceresponse["invoice_id"].toString(), imgrowdatabytes, footerDeatils);
-                                                                                                              }
-                                                                                                              // setState(() {
-                                                                                                              //   loading = false;
-                                                                                                              // });
-                                                                                                              // setStateDialog(() {
-                                                                                                              //   dialogueloading = false;
-                                                                                                              // });
-                                                                                                              pushWidgetWhileRemove(newPage: const SuccessPage(screen: dashboard()), context: context);
-                                                                                                            } else {
-                                                                                                              // setState(() {
-                                                                                                              //   mainloading = false;
-                                                                                                              // });
-                                                                                                              setStateDialog(() {
-                                                                                                                dialogueloading = false;
-                                                                                                              });
-                                                                                                              Get.snackbar(maxWidth: MediaQuery.of(context).size.width / 4, "Failed", saveinvoiceresponse["msg"].toString(), backgroundColor: Colors.red, colorText: Colors.white);
-                                                                                                            }
-                                                                                                          } else {
-                                                                                                            Get.snackbar(maxWidth: MediaQuery.of(context).size.width / 4, "Failed", "Error", backgroundColor: Colors.red, colorText: Colors.white);
-                                                                                                          }
-                                                                                                        },
-                                                                                                        child: Container(
-                                                                                                          decoration: BoxDecoration(
-                                                                                                            color: Colors.green,
-                                                                                                            borderRadius: BorderRadius.circular(5),
-                                                                                                          ),
-                                                                                                          margin: const EdgeInsets.only(left: 20, right: 20),
-                                                                                                          width: MediaQuery.of(context).size.width / 3,
-                                                                                                          height: 48,
-                                                                                                          child: const Center(
-                                                                                                            child: Text(
-                                                                                                              "AUTHENTICATE & SAVE",
-                                                                                                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, color: Colors.white, fontWeight: FontWeight.w700),
-                                                                                                            ),
-                                                                                                          ),
-                                                                                                        ),
-                                                                                                      )
-                                                                                                    ],
-                                                                                                  ),
-                                                                                                ),
-                                                                                              ),
-                                                                                            ],
-                                                                                          ),
-                                                                                        ),
-                                                                                ),
-                                                                              );
-                                                                            });
-                                                                          });
+                                                                        const PaperSize
+                                                                            paper =
+                                                                            PaperSize.mm80;
+                                                                        final profile =
+                                                                            await CapabilityProfile.load();
+                                                                        final printer = NetworkPrinter(
+                                                                            paper,
+                                                                            profile);
+                                                                        print(widget
+                                                                            .usbdevice);
+                                                                        if (widget
+                                                                            .usbdevice
+                                                                            .isNotEmpty) {
+                                                                          var footerDeatils =
+                                                                              {
+                                                                            "sub_total":
+                                                                                saveinvoiceresponse["sub_total"],
+                                                                            "vat":
+                                                                                saveinvoiceresponse["total_tax_amount"],
+                                                                            "total_without_vat":
+                                                                                saveinvoiceresponse["total_wo_vat"],
+                                                                            "discount":
+                                                                                saveinvoiceresponse["total_discount"],
+                                                                            "grand_total":
+                                                                                saveinvoiceresponse["grand_total"],
+                                                                            "recipt_type":
+                                                                                saveinvoiceresponse["receipt_type"],
+                                                                            "received_amt":
+                                                                                saveinvoiceresponse["received_amount"],
+                                                                            "delivery_at_location": homeDelivery
+                                                                                ? "Y"
+                                                                                : "N"
+                                                                          };
+                                                                          API.printInvoiceWindows(
+                                                                              BluetoothPrinter(deviceName: widget.usbdevice["devicename"], vendorId: widget.usbdevice["vendorid"], productId: widget.usbdevice["productid"]),
+                                                                              printer,
+                                                                              saveinvoiceresponse["items"],
+                                                                              imagebytes,
+                                                                              saveinvoiceresponse["invoice_no"].toString(),
+                                                                              saveinvoiceresponse["customer_name"],
+                                                                              saveinvoiceresponse["invoice_date"],
+                                                                              saveinvoiceresponse["warehouse_name"],
+                                                                              widget.userdetails["company_name"],
+                                                                              widget.userdetails["billing_address"],
+                                                                              widget.userdetails["genral_phno"],
+                                                                              saveinvoiceresponse["customer_phone"],
+                                                                              saveinvoiceresponse["sales_man"],
+                                                                              saveinvoiceresponse["receipt_type"],
+                                                                              saveinvoiceresponse["received_amount"],
+                                                                              widget.userdetails["trn_no"],
+                                                                              saveinvoiceresponse["total_amount"],
+                                                                              saveinvoiceresponse["total_discount"],
+                                                                              saveinvoiceresponse["total_wo_vat"],
+                                                                              saveinvoiceresponse["total_tax_amount"].toString(),
+                                                                              saveinvoiceresponse["grand_total"].toString(),
+                                                                              saveinvoiceresponse["customer_address"],
+                                                                              saveinvoiceresponse["received_cash_amount"].toString(),
+                                                                              saveinvoiceresponse["received_card_amount"].toString(),
+                                                                              saveinvoiceresponse["invoice_created_date_time"].toString(),
+                                                                              saveinvoiceresponse["invoice_id"].toString(),
+                                                                              imgrowdatabytes,
+                                                                              footerDeatils);
+                                                                        }
+                                                                        // setState(() {
+                                                                        //   loading = false;
+                                                                        // });
+                                                                        // setStateDialog(() {
+                                                                        //   dialogueloading = false;
+                                                                        // });
+                                                                        model.net_total =
+                                                                            0;
+                                                                        pushWidgetWhileRemove(
+                                                                            newPage:
+                                                                                const SuccessPage(screen: dashboard()),
+                                                                            context: context);
+                                                                      } else {
+                                                                        // setState(() {
+                                                                        //   mainloading = false;
+                                                                        // });
+
+                                                                        Get.snackbar(
+                                                                            maxWidth: MediaQuery.of(context).size.width /
+                                                                                4,
+                                                                            "Failed",
+                                                                            saveinvoiceresponse["msg"]
+                                                                                .toString(),
+                                                                            backgroundColor:
+                                                                                Colors.red,
+                                                                            colorText: Colors.white);
+                                                                      }
                                                                     } else {
                                                                       Get.snackbar(
                                                                           maxWidth: MediaQuery.of(context).size.width /
                                                                               4,
                                                                           "Failed",
-                                                                          "Please enter amount greater than or equal to grand total"
+                                                                          "Please enter amount equal to grand total."
                                                                               .toString(),
                                                                           backgroundColor: Colors
                                                                               .red,
@@ -4009,6 +4107,8 @@ class _HomePageState extends State<HomePage> {
                                                                 setState(() {
                                                                   selectedreceipttype =
                                                                       data;
+                                                                  receivedamountcontroller
+                                                                      .text = "";
                                                                 });
                                                               },
                                                               items: receipttype
@@ -4165,6 +4265,8 @@ class _HomePageState extends State<HomePage> {
                                                                             4.0)),
                                                           ),
                                                           child: TextField(
+                                                            focusNode:
+                                                                footerDiscountNode,
                                                             controller:
                                                                 discountController,
                                                             decoration: const InputDecoration(
@@ -4174,20 +4276,25 @@ class _HomePageState extends State<HomePage> {
                                                                     InputBorder
                                                                         .none),
                                                             onChanged: (value) {
-                                                              footer_discount_text =
-                                                                  value
-                                                                      .toString();
-                                                              print("Discount Amount " +
-                                                                  footer_discount_text);
-                                                              if (footer_discount_text
-                                                                  .isEmpty) {
+                                                              if (footerDiscountNode
+                                                                  .hasFocus) {
                                                                 footer_discount_text =
-                                                                    "0";
+                                                                    value
+                                                                        .toString();
+                                                                print("Discount Amount " +
+                                                                    footer_discount_text);
+                                                                if (footer_discount_text
+                                                                    .isEmpty) {
+                                                                  footer_discount_text =
+                                                                      "0";
+                                                                }
+                                                                model.LineDiscountEnabled =
+                                                                    false;
+                                                                model.footer_discount_text =
+                                                                    footer_discount_text;
+                                                                model
+                                                                    .calculateTotalRate();
                                                               }
-                                                              model.footer_discount_text =
-                                                                  footer_discount_text;
-                                                              model
-                                                                  .calculateTotalRate();
                                                               setState(() {
                                                                 print("");
                                                               });
@@ -4325,11 +4432,12 @@ class _HomePageState extends State<HomePage> {
                                                               height: 40,
                                                               // color: Colors.red,
                                                               child: TextField(
-                                                                readOnly:
-                                                                    (selectedreceipttype["code"] ==
-                                                                            "")
-                                                                        ? true
-                                                                        : false,
+                                                                readOnly: (selectedreceipttype["code"] ==
+                                                                            "" ||
+                                                                        selectedreceipttype["code"] ==
+                                                                            "CR")
+                                                                    ? true
+                                                                    : false,
                                                                 keyboardType:
                                                                     TextInputType
                                                                         .number,
@@ -4539,7 +4647,7 @@ class _HomePageState extends State<HomePage> {
                                                                         (val) {
                                                                       setState(
                                                                           () {
-                                                                        cashcard_cash =
+                                                                        cash_amount =
                                                                             val;
                                                                       });
                                                                       calculateReceivedAmount();
@@ -4618,7 +4726,7 @@ class _HomePageState extends State<HomePage> {
                                                                       onChanged: (val) {
                                                                         setState(
                                                                             () {
-                                                                          cashcard_card =
+                                                                          card_amount =
                                                                               val;
                                                                         });
                                                                         calculateReceivedAmount();
@@ -4629,130 +4737,134 @@ class _HomePageState extends State<HomePage> {
                                                           ],
                                                         )
                                                       : const SizedBox(),
-                                                  // selectedreceipttype["code"] ==
-                                                  //         "CA"
-                                                  //     ? Column(
-                                                  //         crossAxisAlignment:
-                                                  //             CrossAxisAlignment
-                                                  //                 .start,
-                                                  //         mainAxisAlignment:
-                                                  //             MainAxisAlignment
-                                                  //                 .spaceAround,
-                                                  //         children: [
-                                                  //           Padding(
-                                                  //             padding:
-                                                  //                 const EdgeInsets
-                                                  //                         .only(
-                                                  //                     top: 2,
-                                                  //                     bottom:
-                                                  //                         4),
-                                                  //             child: Row(
-                                                  //               mainAxisAlignment:
-                                                  //                   MainAxisAlignment
-                                                  //                       .start,
-                                                  //               children: [
-                                                  //                 Text(
-                                                  //                   "Authorization Code"
-                                                  //                       .toUpperCase(),
-                                                  //                   textAlign:
-                                                  //                       TextAlign
-                                                  //                           .start,
-                                                  //                   style: TextStyle(
-                                                  //                       color: Colors
-                                                  //                           .black,
-                                                  //                       fontSize:
-                                                  //                           10,
-                                                  //                       fontWeight:
-                                                  //                           FontWeight
-                                                  //                               .w600,
-                                                  //                       fontFamily:
-                                                  //                           'Montserrat'),
-                                                  //                 ),
-                                                  //               ],
-                                                  //             ),
-                                                  //           ),
-                                                  //           Container(
-                                                  //             width: MediaQuery.of(
-                                                  //                         context)
-                                                  //                     .size
-                                                  //                     .width /
-                                                  //                 6,
-                                                  //             height: 40,
-                                                  //             // color: Colors.red,
-                                                  //             child:
-                                                  //                 TextFormField(
-                                                  //               controller:
-                                                  //                   authorizationcodecontroller,
-                                                  //               keyboardType:
-                                                  //                   TextInputType
-                                                  //                       .number,
-                                                  //               style: TextStyle(
-                                                  //                   color: API
-                                                  //                       .textcolor,
-                                                  //                   fontWeight:
-                                                  //                       FontWeight
-                                                  //                           .w400),
-                                                  //               decoration:
-                                                  //                   InputDecoration(
-                                                  //                       filled:
-                                                  //                           true,
-                                                  //                       fillColor: const Color.fromRGBO(
-                                                  //                           248,
-                                                  //                           248,
-                                                  //                           253,
-                                                  //                           1),
-                                                  //                       enabledBorder:
-                                                  //                           OutlineInputBorder(
-                                                  //                         borderRadius:
-                                                  //                             BorderRadius.circular(4.0),
-                                                  //                         borderSide:
-                                                  //                             BorderSide(
-                                                  //                           color:
-                                                  //                               API.bordercolor,
-                                                  //                           width:
-                                                  //                               1.0,
-                                                  //                         ),
-                                                  //                       ),
-                                                  //                       focusedBorder:
-                                                  //                           OutlineInputBorder(
-                                                  //                         borderRadius:
-                                                  //                             BorderRadius.circular(4.0),
-                                                  //                         borderSide:
-                                                  //                             const BorderSide(
-                                                  //                           color:
-                                                  //                               Colors.green,
-                                                  //                           width:
-                                                  //                               1.0,
-                                                  //                         ),
-                                                  //                       ),
-                                                  //                       hintStyle: const TextStyle(
-                                                  //                           fontFamily:
-                                                  //                               'Montserrat',
-                                                  //                           color: Color.fromRGBO(
-                                                  //                               181,
-                                                  //                               184,
-                                                  //                               203,
-                                                  //                               1),
-                                                  //                           fontWeight: FontWeight
-                                                  //                               .w500,
-                                                  //                           fontSize:
-                                                  //                               14),
-                                                  //                       contentPadding: const EdgeInsets.fromLTRB(
-                                                  //                           10.0,
-                                                  //                           10.0,
-                                                  //                           10.0,
-                                                  //                           10.0),
-                                                  //                       // ignore: unnecessary_null_comparison
-                                                  //                       hintText:
-                                                  //                           'Code',
-                                                  //                       border: OutlineInputBorder(
-                                                  //                           borderRadius:
-                                                  //                               BorderRadius.circular(4.0))),
-                                                  //             ),
-                                                  //           )
-                                                  //         ],
-                                                  //       )
-                                                  //     : SizedBox(),
+                                                  (selectedreceipttype[
+                                                                  "code"] ==
+                                                              "CA" ||
+                                                          selectedreceipttype[
+                                                                  "code"] ==
+                                                              "CC")
+                                                      ? Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceAround,
+                                                          children: [
+                                                            Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                          .only(
+                                                                      top: 2,
+                                                                      bottom:
+                                                                          4),
+                                                              child: Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  Text(
+                                                                    "Authorization Code"
+                                                                        .toUpperCase(),
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .start,
+                                                                    style: TextStyle(
+                                                                        color: Colors
+                                                                            .black,
+                                                                        fontSize:
+                                                                            10,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w600,
+                                                                        fontFamily:
+                                                                            'Montserrat'),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                            Container(
+                                                              width: MediaQuery.of(
+                                                                          context)
+                                                                      .size
+                                                                      .width /
+                                                                  6,
+                                                              height: 40,
+                                                              // color: Colors.red,
+                                                              child:
+                                                                  TextFormField(
+                                                                controller:
+                                                                    authorizationcodecontroller,
+                                                                keyboardType:
+                                                                    TextInputType
+                                                                        .number,
+                                                                style: TextStyle(
+                                                                    color: API
+                                                                        .textcolor,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w400),
+                                                                decoration:
+                                                                    InputDecoration(
+                                                                        filled:
+                                                                            true,
+                                                                        fillColor: const Color.fromRGBO(
+                                                                            248,
+                                                                            248,
+                                                                            253,
+                                                                            1),
+                                                                        enabledBorder:
+                                                                            OutlineInputBorder(
+                                                                          borderRadius:
+                                                                              BorderRadius.circular(4.0),
+                                                                          borderSide:
+                                                                              BorderSide(
+                                                                            color:
+                                                                                API.bordercolor,
+                                                                            width:
+                                                                                1.0,
+                                                                          ),
+                                                                        ),
+                                                                        focusedBorder:
+                                                                            OutlineInputBorder(
+                                                                          borderRadius:
+                                                                              BorderRadius.circular(4.0),
+                                                                          borderSide:
+                                                                              const BorderSide(
+                                                                            color:
+                                                                                Colors.green,
+                                                                            width:
+                                                                                1.0,
+                                                                          ),
+                                                                        ),
+                                                                        hintStyle: const TextStyle(
+                                                                            fontFamily:
+                                                                                'Montserrat',
+                                                                            color: Color.fromRGBO(
+                                                                                181,
+                                                                                184,
+                                                                                203,
+                                                                                1),
+                                                                            fontWeight: FontWeight
+                                                                                .w500,
+                                                                            fontSize:
+                                                                                14),
+                                                                        contentPadding: const EdgeInsets.fromLTRB(
+                                                                            10.0,
+                                                                            10.0,
+                                                                            10.0,
+                                                                            10.0),
+                                                                        // ignore: unnecessary_null_comparison
+                                                                        hintText:
+                                                                            'Code',
+                                                                        border: OutlineInputBorder(
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(4.0))),
+                                                              ),
+                                                            )
+                                                          ],
+                                                        )
+                                                      : SizedBox(),
                                                   const SizedBox(
                                                     height: 1,
                                                   ),
@@ -5025,5 +5137,23 @@ class _HomePageState extends State<HomePage> {
                   )),
       );
     });
+  }
+
+  void LineAddItems(CartModel model) {
+    addProducttoTable(model);
+    if (model.LineDiscountEnabled) {
+      discountController.text =
+          model.getTotalofLineDiscount().toStringAsFixed(2);
+    }
+  }
+
+  void ClearAllData(CartModel model) {
+    authorizationcodecontroller.text = "";
+    receivedamountcontroller.text = "0";
+    discountController.text = "0.00";
+    cash_amount = "0";
+    card_amount = "";
+    selectedreceipttype = receipttype[0];
+    model.removeAll();
   }
 }
