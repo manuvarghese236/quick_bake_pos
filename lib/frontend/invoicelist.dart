@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:esc_pos_printer/esc_pos_printer.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
@@ -18,7 +20,7 @@ import 'package:windowspos/models/locationmodel.dart';
 import 'package:windowspos/models/printermodel.dart';
 import 'package:windowspos/models/salesmanmodel.dart';
 import 'package:image/image.dart' as im;
-
+import 'package:http/http.dart' as http;
 import '../changepaymenttype.dart';
 
 class Receipts extends StatefulWidget {
@@ -45,6 +47,7 @@ class _ReceiptsState extends State<Receipts> {
   TextEditingController authorizationcodecontroller = TextEditingController();
 
   String lastSelectInvoiceId = "";
+  String selectedDateCode = "";
   // Map<String, dynamic> salesman = {};
   // Map<String, dynamic> location = {};
 
@@ -56,6 +59,16 @@ class _ReceiptsState extends State<Receipts> {
   Map<String, dynamic> selectedsalesman = {};
   Map<String, dynamic> selectedlocation = {};
   Map<String, dynamic> selectedreceipttype = {};
+  String selectedCustomerLocationID = "";
+  List Customerlocation = [];
+  String selectedTypeId = "";
+  var receipttypeList = [
+    {"type": "All", "code": ""},
+    {"type": "Cash", "code": "CH"},
+    {"type": "Card", "code": "CA"},
+    {"type": "Cash + Card", "code": "CC"},
+    {"type": "Credit Sale", "code": "CR"},
+  ];
   dynamic imagebytes;
   Uint8List? imgdatabytes;
   Uint8List? imgrowdatabytes;
@@ -84,6 +97,8 @@ class _ReceiptsState extends State<Receipts> {
         imgdatabytes = logoimgBytes;
         imgrowdatabytes = logorowimgBytes;
         selecteddate.text =
+            "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+        selectedDateCode =
             "${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}";
       });
       print("getSalesmanQueryList");
@@ -95,12 +110,29 @@ class _ReceiptsState extends State<Receipts> {
           await API.indexOfList(userdetailsresponse, widget.userid.toString());
       print("Selected data");
       print(userdetailsid);
-
+      Customerlocation = await getLocation(widget.token);
       loadDataFromServer();
       SearchTermController.addListener(() {
         loadDataFromServer();
       });
     });
+  }
+
+  getLocation(String token) async {
+    String url = "${API.baseurl}Apicustomer/LocationList";
+    print(url);
+    print("token " + token);
+    var res = await http.get(Uri.parse(url),
+        headers: {"Accept": "application/json", "token": token});
+    print(res.body);
+    if (res.statusCode == 200) {
+      var resBody = json.decode(res.body);
+      List data = resBody['data'];
+      data.add({"id": "0", "location_name": "All "});
+      return data;
+    } else {
+      return {"status": "error", "message": res.reasonPhrase};
+    }
   }
 
   loadInitSetting() async {
@@ -126,9 +158,11 @@ class _ReceiptsState extends State<Receipts> {
     });
     dynamic invoicelistresponse = await API.invoiceListAPI(
         SearchTermController.text,
-        selecteddate.text,
+        selectedDateCode,
         selectedsalesman.isEmpty ? "" : selectedsalesman["id"],
         selectedlocation.isEmpty ? "" : selectedlocation["id"],
+        selectedTypeId,
+        selectedCustomerLocationID,
         widget.token);
     if (invoicelistresponse["status"] == "success") {
       setState(() {
@@ -193,7 +227,7 @@ class _ReceiptsState extends State<Receipts> {
               height: 9,
             ),
             Container(
-              height: MediaQuery.of(context).size.height / 7.8,
+              height: MediaQuery.of(context).size.height / 8.8,
               width: MediaQuery.of(context).size.width,
               // color: Colors.yellow,
               child: Row(
@@ -220,7 +254,7 @@ class _ReceiptsState extends State<Receipts> {
                               ])),
                       Container(
                           margin: const EdgeInsets.only(left: 20, right: 20),
-                          width: MediaQuery.of(context).size.width / 7,
+                          width: MediaQuery.of(context).size.width / 8,
                           child: TextField(
                               controller: SearchTermController,
                               decoration: InputDecoration(
@@ -277,7 +311,7 @@ class _ReceiptsState extends State<Receipts> {
                         ),
                         Container(
                           margin: const EdgeInsets.only(left: 20, right: 20),
-                          width: MediaQuery.of(context).size.width / 8,
+                          width: MediaQuery.of(context).size.width / 10,
                           child: TextField(
                               controller: selecteddate,
                               keyboardType: TextInputType.name,
@@ -313,18 +347,22 @@ class _ReceiptsState extends State<Receipts> {
                                   setState(() {
                                     loading = true;
                                     selecteddate.text =
+                                        "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
+                                    selectedDateCode =
                                         "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
                                   });
                                   final dynamic invoicelistresponse =
                                       await API.invoiceListAPI(
                                           SearchTermController.text,
-                                          selecteddate.text,
+                                          selectedDateCode,
                                           selectedsalesman.isEmpty
                                               ? ""
                                               : selectedsalesman["id"],
                                           selectedlocation.isEmpty
                                               ? ""
                                               : selectedlocation["id"],
+                                          selectedTypeId,
+                                          selectedCustomerLocationID,
                                           widget.token);
                                   if (invoicelistresponse["status"] ==
                                       "success") {
@@ -414,7 +452,7 @@ class _ReceiptsState extends State<Receipts> {
                               selectedsalesman.isNotEmpty
                                   ? Container(
                                       width: MediaQuery.of(context).size.width /
-                                          4.5,
+                                          7.5,
                                       height: 48,
                                       decoration: BoxDecoration(
                                           // border:
@@ -426,7 +464,7 @@ class _ReceiptsState extends State<Receipts> {
                                               color: Colors.green, width: 1.0)),
                                       child: Padding(
                                         padding: const EdgeInsets.fromLTRB(
-                                            20.0, 15.0, 20.0, 15.0),
+                                            5.0, 15.0, 5.0, 15.0),
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
@@ -435,7 +473,7 @@ class _ReceiptsState extends State<Receipts> {
                                               width: MediaQuery.of(context)
                                                       .size
                                                       .width /
-                                                  6,
+                                                  8.5,
                                               child: Text(
                                                 selectedsalesman['name']
                                                     .toString()
@@ -456,7 +494,7 @@ class _ReceiptsState extends State<Receipts> {
                                   : Container(
                                       height: 48,
                                       width: MediaQuery.of(context).size.width /
-                                          4.5,
+                                          7.5,
                                       child: TypeAheadField(
                                           textFieldConfiguration:
                                               TextFieldConfiguration(
@@ -544,7 +582,7 @@ class _ReceiptsState extends State<Receipts> {
                                             final dynamic invoicelistresponse =
                                                 await API.invoiceListAPI(
                                                     SearchTermController.text,
-                                                    selecteddate.text,
+                                                    selectedDateCode,
                                                     selectedsalesman.isEmpty
                                                         ? ""
                                                         : selectedsalesman[
@@ -553,6 +591,8 @@ class _ReceiptsState extends State<Receipts> {
                                                         ? ""
                                                         : selectedlocation[
                                                             "id"],
+                                                    selectedTypeId,
+                                                    selectedCustomerLocationID,
                                                     widget.token);
                                             print(invoicelistresponse);
                                             if (invoicelistresponse["status"] ==
@@ -590,13 +630,15 @@ class _ReceiptsState extends State<Receipts> {
                                   final dynamic invoicelistresponse =
                                       await API.invoiceListAPI(
                                           SearchTermController.text,
-                                          selecteddate.text,
+                                          selectedDateCode,
                                           selectedsalesman.isEmpty
                                               ? ""
                                               : selectedsalesman["id"],
                                           selectedlocation.isEmpty
                                               ? ""
                                               : selectedlocation["id"],
+                                          selectedTypeId,
+                                          selectedCustomerLocationID,
                                           widget.token);
                                   print(invoicelistresponse);
                                   if (invoicelistresponse["status"] ==
@@ -648,7 +690,7 @@ class _ReceiptsState extends State<Receipts> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                "Location".toUpperCase(),
+                                "Outlet".toUpperCase(),
                                 textAlign: TextAlign.start,
                                 style: TextStyle(
                                     color: Colors.black,
@@ -663,7 +705,7 @@ class _ReceiptsState extends State<Receipts> {
                               selectedlocation.isNotEmpty
                                   ? Container(
                                       width: MediaQuery.of(context).size.width /
-                                          3.5,
+                                          5.8,
                                       height: 48,
                                       decoration: BoxDecoration(
                                           // border:
@@ -675,7 +717,7 @@ class _ReceiptsState extends State<Receipts> {
                                               color: Colors.green, width: 1.0)),
                                       child: Padding(
                                         padding: const EdgeInsets.fromLTRB(
-                                            20.0, 15.0, 20.0, 15.0),
+                                            15.0, 15.0, 20.0, 15.0),
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
@@ -684,7 +726,7 @@ class _ReceiptsState extends State<Receipts> {
                                               width: MediaQuery.of(context)
                                                       .size
                                                       .width /
-                                                  4.2,
+                                                  7,
                                               child: Text(
                                                 selectedlocation['name']
                                                     .toString()
@@ -704,8 +746,8 @@ class _ReceiptsState extends State<Receipts> {
                                     )
                                   : Container(
                                       height: 48,
-                                      width: MediaQuery.of(context).size.width /
-                                          3.5,
+                                      width:
+                                          MediaQuery.of(context).size.width / 7,
                                       child: TypeAheadField(
                                           textFieldConfiguration:
                                               TextFieldConfiguration(
@@ -793,7 +835,7 @@ class _ReceiptsState extends State<Receipts> {
                                             final dynamic invoicelistresponse =
                                                 await API.invoiceListAPI(
                                                     SearchTermController.text,
-                                                    selecteddate.text,
+                                                    selectedDateCode,
                                                     selectedsalesman.isEmpty
                                                         ? ""
                                                         : selectedsalesman[
@@ -802,6 +844,8 @@ class _ReceiptsState extends State<Receipts> {
                                                         ? ""
                                                         : selectedlocation[
                                                             "id"],
+                                                    selectedTypeId,
+                                                    selectedCustomerLocationID,
                                                     widget.token);
                                             print(invoicelistresponse);
                                             if (invoicelistresponse["status"] ==
@@ -839,13 +883,15 @@ class _ReceiptsState extends State<Receipts> {
                                   final dynamic invoicelistresponse =
                                       await API.invoiceListAPI(
                                           SearchTermController.text,
-                                          selecteddate.text,
+                                          selectedDateCode,
                                           selectedsalesman.isEmpty
                                               ? ""
                                               : selectedsalesman["id"],
                                           selectedlocation.isEmpty
                                               ? ""
                                               : selectedlocation["id"],
+                                          selectedTypeId,
+                                          selectedCustomerLocationID,
                                           widget.token);
                                   print(invoicelistresponse);
                                   if (invoicelistresponse["status"] ==
@@ -886,6 +932,96 @@ class _ReceiptsState extends State<Receipts> {
                       ),
                     ],
                   ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      const Text("Receipt type"),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(1.0, 0, 1.0, 3),
+                        height: 48,
+                        width: MediaQuery.of(context).size.width / 9,
+                        decoration: BoxDecoration(
+                            // border:
+                            color: const Color.fromRGBO(248, 248, 253, 1),
+                            borderRadius: BorderRadius.circular(4.0),
+                            border:
+                                Border.all(color: Colors.green, width: 1.0)),
+                        child: DropdownButtonFormField(
+                          decoration: const InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white))),
+                          items: receipttypeList
+                              .map((e) => DropdownMenuItem(
+                                    value: e["code"].toString(),
+                                    child: Text(
+                                      e["type"].toString(),
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ))
+                              .toList(),
+                          onChanged: (value) async {
+                            if (value != null) {
+                              selectedTypeId = value.toString();
+                            } else {
+                              selectedTypeId = "";
+                            }
+
+                            loadDataFromServer();
+
+                            ///
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      const Text("Customer Location"),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(2.0, 0, 2.0, 3),
+                        height: 48,
+                        width: MediaQuery.of(context).size.width / 6.5,
+                        decoration: BoxDecoration(
+                            // border:
+                            color: const Color.fromRGBO(248, 248, 253, 1),
+                            borderRadius: BorderRadius.circular(4.0),
+                            border:
+                                Border.all(color: Colors.green, width: 1.0)),
+                        child: DropdownButtonFormField(
+                          decoration: const InputDecoration(
+                              enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white))),
+                          items: Customerlocation.map((e) => DropdownMenuItem(
+                                value: e["id"].toString(),
+                                child: Text(
+                                  e["location_name"].toString(),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              )).toList(),
+                          onChanged: (value) async {
+                            setState(() {
+                              if (value != null) {
+                                selectedCustomerLocationID = value.toString();
+                              } else {
+                                selectedCustomerLocationID = "";
+                              }
+                            });
+
+                            loadDataFromServer();
+
+                            ///
+                          },
+                        ),
+                      ),
+                    ],
+                  )
                 ],
               ),
             ),
@@ -949,15 +1085,44 @@ class _ReceiptsState extends State<Receipts> {
                                             fontWeight: FontWeight.w600,
                                             fontFamily: 'Montserrat'),
                                       ),
-                                      subtitle: Text(
-                                        invoicelist[index]["customer_name"]
-                                            .toUpperCase(),
-                                        textAlign: TextAlign.start,
-                                        style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'Montserrat'),
+                                      subtitle: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            invoicelist[index]["customer_name"]
+                                                .toUpperCase(),
+                                            textAlign: TextAlign.start,
+                                            style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'Montserrat'),
+                                          ),
+                                          Text(
+                                            invoicelist[index]["warehouse_name"]
+                                                .toUpperCase(),
+                                            textAlign: TextAlign.start,
+                                            style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'Montserrat'),
+                                          ),
+                                          Text(
+                                            invoicelist[index]
+                                                    ["customer_location"]
+                                                .toString(),
+                                            textAlign: TextAlign.start,
+                                            style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 10,
+                                                fontFamily: 'Montserrat'),
+                                          ),
+                                        ],
                                       ),
                                       trailing: Container(
                                         // color: Colors.yellow,
@@ -1598,7 +1763,10 @@ class _ReceiptsState extends State<Receipts> {
                                                                             "receipt_type"],
                                                                     "received_amt":
                                                                         selectedreceipt![
-                                                                            "received_amount"]
+                                                                            "received_amount"],
+                                                                    "emirates":
+                                                                        selectedreceipt![
+                                                                            "emirates"],
                                                                   });
                                                             }
                                                             setState(() {

@@ -96,7 +96,7 @@ class _dashboardState extends State<dashboard> {
           actions: [
             Center(
               child: Text(
-                "( version - 1.0.2 )".toUpperCase(),
+                "( version - ${API.APP_VER})".toUpperCase(),
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     fontFamily: 'Montserrat',
@@ -467,6 +467,8 @@ class _dashboardState extends State<dashboard> {
                     reportselected
                         ? Row(
                             children: [
+                              /*
+                              this for hiding commission report , QUick bake don't have any commission.
                               GestureDetector(
                                 onTap: () {
                                   slideRightWidget(
@@ -527,7 +529,7 @@ class _dashboardState extends State<dashboard> {
                                     ),
                                   ),
                                 ),
-                              ),
+                              ), */
                               GestureDetector(
                                 onTap: () {
                                   slideRightWidget(

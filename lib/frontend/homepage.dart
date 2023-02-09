@@ -31,6 +31,7 @@ import 'package:windowspos/models/salesmanmodel.dart';
 import '../formatter.dart';
 
 class HomePage extends StatefulWidget {
+  final int numberInvoiceCopy = 2;
   final Map<String, dynamic> usbdevice;
   final String token;
   final Map<String, dynamic> userdetails;
@@ -48,10 +49,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  /// Allow negative Qty
+  bool allowNegativeQty = false;
+
+  /// TextEditingController
   TextEditingController receivedamountcontroller = TextEditingController();
   TextEditingController authorizationcodecontroller = TextEditingController();
   TextEditingController barcodeController = TextEditingController();
   TextEditingController discountController = TextEditingController();
+
   FocusNode linediscountfocusnode = FocusNode();
   FocusNode footerDiscountNode = FocusNode();
   FocusNode barcodeFocusNode = FocusNode();
@@ -60,6 +66,7 @@ class _HomePageState extends State<HomePage> {
   String? selectedContact = null;
   CustomerContact? selectedCustomerContact;
   String userId = "0";
+  String userWareHouseId = "";
   // TextEditingController cashpluscardcashcontroller = TextEditingController();
   // TextEditingController cashpluscardcardcontroller = TextEditingController();
 
@@ -76,6 +83,7 @@ class _HomePageState extends State<HomePage> {
     try {
       SharedPreferences blueskydehneepos =
           await SharedPreferences.getInstance();
+      userWareHouseId = blueskydehneepos.getString("warehouse_id").toString();
       print("init State");
 
       if (blueskydehneepos.getString("barcodenabled").toString() == "Y") {
@@ -274,12 +282,13 @@ class _HomePageState extends State<HomePage> {
       "discountpercentagevalue":
           SimpleConvert.safeDouble(totalafterdiscountpercentage.toString())
               .toStringAsFixed(6),
-      "subtotalafterdiscount": ((SimpleConvert.safeDouble(total.toString()) *
-                  100) /
-              (100 +
-                  double.parse(double.parse(itemdetails["tax_code"].toString())
-                      .toStringAsFixed(1))))
-          .toStringAsFixed(6),
+      "subtotalafterdiscount":
+          ((SimpleConvert.safeDouble(total.toString()) * 100) /
+                  (100 +
+                      double.parse(SimpleConvert.safeDouble(
+                              itemdetails["tax_code"].toString())
+                          .toStringAsFixed(1))))
+              .toStringAsFixed(6),
       "vatafterdiscount": (double.parse(total.toString()) -
               ((double.parse(total.toString()) * 100) /
                   (100 +
@@ -313,67 +322,91 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  addProducttoTable(model) async {
-    if (model.checkItems(itemdetails["id"], model.cart)) {
-      var product_id = itemdetails["id"];
-      model.cart.forEach((element) {
-        if (element.id == product_id) {
-          double quantity = double.parse(element.quantity);
+  addProducttoTable(CartModel model) async {
+    bool hasQtyInStock = model.hasQtyInStock(
+        itemdetails["id"],
+        model.cart,
+        itemdetails["quantity"].toString(),
+        itemdetails["available_qty"].toString());
+    if (allowNegativeQty || hasQtyInStock) {
+      ///
+      if (!hasQtyInStock) {
+        String productDesc = itemdetails["description"].toString();
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "$productDesc out of stock.",
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      }
+      if (model.checkItems(itemdetails["id"], model.cart)) {
+        var product_id = itemdetails["id"];
+        model.cart.forEach((element) {
+          if (element.id == product_id) {
+            double quantity = double.parse(element.quantity);
 
-          double newQty = double.parse(itemdetails["quantity"].toString());
-          quantity += newQty;
-          element.quantity = quantity.toInt().toString();
-        }
+            double newQty = double.parse(itemdetails["quantity"].toString());
+            quantity += newQty;
+            element.quantity = quantity.toInt().toString();
+          }
+          model.calculateTotalRate();
+        });
+      } else {
+        final dynamic checkcalculateddata = await checkTotal(itemdetails);
+        print("The calculated data");
+        print(checkcalculateddata);
+        model.addProduct(
+          ItemSchema(
+            id: itemdetails["id"],
+            partnumber: itemdetails["part_number"],
+            description: itemdetails["description"],
+            brandid: itemdetails["brand_id"],
+            brandname: itemdetails["brand_name"],
+            rate: itemdetails["rate"],
+            quantity: itemdetails["quantity"],
+            warehouseid: itemdetails["warehouse_id"],
+            unit_name: selectedunit["unit_name"].toString(),
+            unit_id: selectedunit["id"].toString(),
+            arr_units: itemdetails["arr_units"],
+            tax_code: itemdetails["tax_code"],
+            discount: itemdetails["discount"],
+            availableqty: itemdetails["available_qty"],
+            discount_percentage: itemdetails["discount_percentage"],
+            discountvalue: SimpleConvert.safeDouble(
+                checkcalculateddata["discountvalue"].toString()),
+            discountpercentagevalue: SimpleConvert.safeDouble(
+                checkcalculateddata["discountpercentagevalue"].toString()),
+            totalafterdiscount: SimpleConvert.safeDouble(
+                checkcalculateddata["total"].toString()),
+            vatafterdiscount: SimpleConvert.safeDouble(
+                checkcalculateddata["vatafterdiscount"].toString()),
+            subtotalafterdiscount: SimpleConvert.safeDouble(
+                checkcalculateddata["subtotalafterdiscount"].toString()),
+            barcode: itemdetails["bar_code"].toString(),
+          ),
+        );
         model.calculateTotalRate();
-      });
-    } else {
-      final dynamic checkcalculateddata = await checkTotal(itemdetails);
-      print("The calculated data");
-      print(checkcalculateddata);
-      model.addProduct(
-        ItemSchema(
-          id: itemdetails["id"],
-          partnumber: itemdetails["part_number"],
-          description: itemdetails["description"],
-          brandid: itemdetails["brand_id"],
-          brandname: itemdetails["brand_name"],
-          rate: itemdetails["rate"],
-          quantity: itemdetails["quantity"],
-          warehouseid: itemdetails["warehouse_id"],
-          unit_name: selectedunit["unit_name"].toString(),
-          unit_id: selectedunit["id"].toString(),
-          arr_units: itemdetails["arr_units"],
-          tax_code: itemdetails["tax_code"],
-          discount: itemdetails["discount"],
-          availableqty: itemdetails["available_qty"],
-          discount_percentage: itemdetails["discount_percentage"],
-          discountvalue: SimpleConvert.safeDouble(
-              checkcalculateddata["discountvalue"].toString()),
-          discountpercentagevalue: SimpleConvert.safeDouble(
-              checkcalculateddata["discountpercentagevalue"].toString()),
-          totalafterdiscount:
-              SimpleConvert.safeDouble(checkcalculateddata["total"].toString()),
-          vatafterdiscount: SimpleConvert.safeDouble(
-              checkcalculateddata["vatafterdiscount"].toString()),
-          subtotalafterdiscount: SimpleConvert.safeDouble(
-              checkcalculateddata["subtotalafterdiscount"].toString()),
-          barcode: itemdetails["bar_code"].toString(),
-        ),
-      );
-      model.calculateTotalRate();
 
-      focusnode.requestFocus();
-      itemFocusnode.requestFocus();
-      if (model.LineDiscountEnabled) {
-        discountController.text = model.footer_discount.toString();
+        focusnode.requestFocus();
+        itemFocusnode.requestFocus();
+        if (model.LineDiscountEnabled) {
+          discountController.text = model.footer_discount.toString();
+        }
+        setState(() {
+          itemdetails = {};
+        });
       }
       setState(() {
         itemdetails = {};
       });
+    } else {
+      Get.snackbar(
+          maxWidth: MediaQuery.of(context).size.width / 4,
+          "Failed",
+          "Product out of stock",
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
     }
-    setState(() {
-      itemdetails = {};
-    });
   }
 
   @override
@@ -422,16 +455,37 @@ class _HomePageState extends State<HomePage> {
                                             color: Colors.red,
                                           )),
                                       IconButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            slideRightWidget(
-                                                newPage: AddCustomer(
-                                                    usbdevice: widget.usbdevice,
-                                                    userdetails:
-                                                        widget.userdetails,
-                                                    type: "1",
-                                                    token: widget.token),
-                                                context: context);
+                                          onPressed: () async {
+                                            var result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    AddCustomer(
+                                                        usbdevice:
+                                                            widget.usbdevice,
+                                                        userdetails:
+                                                            widget.userdetails,
+                                                        type: AddCustomer
+                                                            .TYPE_FROM_INVOICE,
+                                                        token: widget.token),
+                                              ),
+                                            );
+                                            if (result != null) {
+                                              setState(() {
+                                                customerdetails = result;
+                                                customerContactList =
+                                                    result["contact"];
+                                                if (customerContactList !=
+                                                        null &&
+                                                    customerContactList.length >
+                                                        0) {
+                                                  selectedContact =
+                                                      customerContactList[0]
+                                                              ["id"]
+                                                          .toString();
+                                                }
+                                              });
+                                            }
                                           },
                                           icon: const Icon(
                                             Icons.add,
@@ -1253,12 +1307,11 @@ class _HomePageState extends State<HomePage> {
                                                             val.length >= 2) {
                                                           final List<dynamic>
                                                               searchresponse =
-                                                              await API
-                                                                  .getItemsQueryList(
-                                                                      "",
-                                                                      val,
-                                                                      widget
-                                                                          .token);
+                                                              await API.getItemsQueryList(
+                                                                  "",
+                                                                  val,
+                                                                  userWareHouseId,
+                                                                  widget.token);
                                                           print("Thi is resp");
                                                           print(searchresponse
                                                               .length);
@@ -1480,12 +1533,14 @@ class _HomePageState extends State<HomePage> {
                                                               .getItemsQueryList(
                                                                   "",
                                                                   "",
+                                                                  userWareHouseId,
                                                                   widget.token);
                                                         } else {
                                                           return await API
                                                               .getItemsQueryList(
                                                                   value,
                                                                   "",
+                                                                  userWareHouseId,
                                                                   widget.token);
                                                         }
                                                       },
@@ -3446,6 +3501,7 @@ class _HomePageState extends State<HomePage> {
                                                                   await API.getItemsQueryList(
                                                                       "",
                                                                       result,
+                                                                      userWareHouseId,
                                                                       widget
                                                                           .token);
                                                               print(
@@ -3820,37 +3876,45 @@ class _HomePageState extends State<HomePage> {
                                                                                 saveinvoiceresponse["received_amount"],
                                                                             "delivery_at_location": homeDelivery
                                                                                 ? "Y"
-                                                                                : "N"
+                                                                                : "N",
+                                                                            "emirates":
+                                                                                saveinvoiceresponse!["emirates"],
                                                                           };
-                                                                          API.printInvoiceWindows(
-                                                                              BluetoothPrinter(deviceName: widget.usbdevice["devicename"], vendorId: widget.usbdevice["vendorid"], productId: widget.usbdevice["productid"]),
-                                                                              printer,
-                                                                              saveinvoiceresponse["items"],
-                                                                              imagebytes,
-                                                                              saveinvoiceresponse["invoice_no"].toString(),
-                                                                              saveinvoiceresponse["customer_name"],
-                                                                              saveinvoiceresponse["invoice_date"],
-                                                                              saveinvoiceresponse["warehouse_name"],
-                                                                              widget.userdetails["company_name"],
-                                                                              widget.userdetails["billing_address"],
-                                                                              widget.userdetails["genral_phno"],
-                                                                              saveinvoiceresponse["customer_phone"],
-                                                                              saveinvoiceresponse["sales_man"],
-                                                                              saveinvoiceresponse["receipt_type"],
-                                                                              saveinvoiceresponse["received_amount"],
-                                                                              widget.userdetails["trn_no"],
-                                                                              saveinvoiceresponse["total_amount"],
-                                                                              saveinvoiceresponse["total_discount"],
-                                                                              saveinvoiceresponse["total_wo_vat"],
-                                                                              saveinvoiceresponse["total_tax_amount"].toString(),
-                                                                              saveinvoiceresponse["grand_total"].toString(),
-                                                                              saveinvoiceresponse["customer_address"],
-                                                                              saveinvoiceresponse["received_cash_amount"].toString(),
-                                                                              saveinvoiceresponse["received_card_amount"].toString(),
-                                                                              saveinvoiceresponse["invoice_created_date_time"].toString(),
-                                                                              saveinvoiceresponse["invoice_id"].toString(),
-                                                                              imgrowdatabytes,
-                                                                              footerDeatils);
+                                                                          for (int i = 0;
+
+                                                                              /// sometimes user want 2 copies of invoice;
+                                                                              i < widget.numberInvoiceCopy;
+                                                                              i++) {
+                                                                            API.printInvoiceWindows(
+                                                                                BluetoothPrinter(deviceName: widget.usbdevice["devicename"], vendorId: widget.usbdevice["vendorid"], productId: widget.usbdevice["productid"]),
+                                                                                printer,
+                                                                                saveinvoiceresponse["items"],
+                                                                                imagebytes,
+                                                                                saveinvoiceresponse["invoice_no"].toString(),
+                                                                                saveinvoiceresponse["customer_name"],
+                                                                                saveinvoiceresponse["invoice_date"],
+                                                                                saveinvoiceresponse["warehouse_name"],
+                                                                                widget.userdetails["company_name"],
+                                                                                widget.userdetails["billing_address"],
+                                                                                widget.userdetails["genral_phno"],
+                                                                                saveinvoiceresponse["customer_phone"],
+                                                                                saveinvoiceresponse["sales_man"],
+                                                                                saveinvoiceresponse["receipt_type"],
+                                                                                saveinvoiceresponse["received_amount"],
+                                                                                widget.userdetails["trn_no"],
+                                                                                saveinvoiceresponse["total_amount"],
+                                                                                saveinvoiceresponse["total_discount"],
+                                                                                saveinvoiceresponse["total_wo_vat"],
+                                                                                saveinvoiceresponse["total_tax_amount"].toString(),
+                                                                                saveinvoiceresponse["grand_total"].toString(),
+                                                                                saveinvoiceresponse["customer_address"],
+                                                                                saveinvoiceresponse["received_cash_amount"].toString(),
+                                                                                saveinvoiceresponse["received_card_amount"].toString(),
+                                                                                saveinvoiceresponse["invoice_created_date_time"].toString(),
+                                                                                saveinvoiceresponse["invoice_id"].toString(),
+                                                                                imgrowdatabytes,
+                                                                                footerDeatils);
+                                                                          }
                                                                         }
                                                                         // setState(() {
                                                                         //   loading = false;

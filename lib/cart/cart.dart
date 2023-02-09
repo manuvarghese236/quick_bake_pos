@@ -187,4 +187,19 @@ class CartModel extends Model {
 
     return false;
   }
+
+  bool hasQtyInStock(String productid, List<ItemSchema> cartlist, String Qty,
+      String totalQty) {
+    double _qtyDouble = SimpleConvert.safeDouble(Qty);
+    double _totalQty = SimpleConvert.safeDouble(totalQty);
+    double _currenCartQty = 0;
+    bool status = true;
+    for (var e in cartlist) {
+      print(e.id);
+      if (e.id == productid) {
+        _currenCartQty = SimpleConvert.safeDouble(e.quantity);
+      }
+    }
+    return (_qtyDouble <= (_totalQty - _currenCartQty));
+  }
 }

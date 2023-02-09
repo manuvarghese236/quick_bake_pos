@@ -35,8 +35,7 @@ class API {
   static Color tilecolor = Color(0xFF451a00);
   static Color tilewhite = Colors.white;
 
-  // static String baseurl = "https://bluesky01.com/dehnee/index.php?r=";
-  // static String imgurl = "https://bluesky01.com/dehnee/";
+  static String APP_VER = "1.0.1";
   static String baseurl = "http://bluesky01.com/quickbake/index.php?r=";
   static String imgurl = "http://bluesky01.com/quickbake/";
 
@@ -564,9 +563,9 @@ class API {
   }
 
   static Future<List<ItemSchema>> getItemsQueryList(
-      String term, String barcode, String token) async {
+      String term, String barcode, String warehouseId, String token) async {
     final itemsearch =
-        '${baseurl}apistore/getlist&term=$term&bar_code=$barcode';
+        '${baseurl}apistore/getlist&term=$term&bar_code=$barcode&warehouse_id=$warehouseId';
     print(token);
     print(itemsearch);
     print(itemsearch);
@@ -708,8 +707,10 @@ class API {
     });
     print(token);
     print(data);
-    final response = await post(Uri.parse('${baseurl}apicustomer/savecustomer'),
+    String url = '${baseurl}apicustomer/savecustomer';
+    final response = await post(Uri.parse(url),
         headers: {"Accept": "application/json", "token": token}, body: data);
+    print(url);
     if (response.statusCode == 200) {
       dynamic savecustomerresponse = jsonDecode(response.body);
       print(savecustomerresponse);
@@ -785,14 +786,20 @@ class API {
     }
   }
 
-  static Future<Map<String, dynamic>> invoiceListAPI(String term, String date,
-      String salesmanid, String locationid, String token) async {
+  static Future<Map<String, dynamic>> invoiceListAPI(
+      String term,
+      String date,
+      String salesmanid,
+      String locationid,
+      String receiptType,
+      String customerLocationId,
+      String token) async {
     print(token);
-    print(Uri.parse(
-        '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}'));
+    String url =
+        '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}&type=$receiptType&customer_location_id=$customerLocationId';
+    print(url);
     final response = await get(
-      Uri.parse(
-          '${baseurl}apiinvoice/GetList&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}'),
+      Uri.parse(url),
       headers: {"Accept": "application/json", "token": token},
     );
     if (response.statusCode == 200) {
@@ -2089,20 +2096,53 @@ class API {
             styles: PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
+      bytes += printer.row([
+        PosColumn(
+            text: "Emirates",
+            styles: PosStyles(bold: true, align: PosAlign.left),
+            width: 3),
+        PosColumn(
+            text: ": " + footerDeatils["emirates"].toString(),
+            styles: PosStyles(bold: true, align: PosAlign.left),
+            width: 9)
+      ]);
 
-      ///removing address section
       // bytes += printer.image(im.decodeImage(imageAddressBytes)!,
       //     align: PosAlign.left);
-      // bytes += printer.row([
-      //   PosColumn(
-      //       text: "address",
-      //       styles: PosStyles(bold: true, align: PosAlign.left),
-      //       width: 3),
-      //   PosColumn(
-      //       text: ": $customeraddress",
-      //       styles: PosStyles(bold: true, align: PosAlign.left),
-      //       width: 9)
-      // ]);
+      if (customeraddress.length <= 30) {
+        bytes += printer.row([
+          PosColumn(
+              text: "Address",
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 3),
+          PosColumn(
+              text: ": $customeraddress",
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 9)
+        ]);
+      } else {
+        /// if address is greater than 30
+        bytes += printer.row([
+          PosColumn(
+              text: "Address",
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 3),
+          PosColumn(
+              text: ": " + customeraddress.substring(0, 30),
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 9)
+        ]);
+        bytes += printer.row([
+          PosColumn(
+              text: " ",
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 3),
+          PosColumn(
+              text: " " + customeraddress.substring(30, customeraddress.length),
+              styles: PosStyles(bold: true, align: PosAlign.left),
+              width: 9)
+        ]);
+      }
       //bytes += printer.emptyLines(1);
       bytes += printer.hr();
       bytes += printer.image(im.decodeImage(rowimage)!);
@@ -2280,19 +2320,24 @@ class API {
       ]);
       bytes += printer.hr();
       //bytes += printer.emptyLines(2);
+      String ReceiptType = "";
+      if (receipttype == "CH") {
+        ReceiptType = "Cash";
+      } else if (receipttype == "CR") {
+        ReceiptType = "Credit Invoice";
+      } else if (receipttype == "CA") {
+        ReceiptType = "Card";
+      } else if (receipttype == "CC") {
+        ReceiptType = "Cash + Card";
+      }
+
       bytes += printer.row([
         PosColumn(
             text: "Receipt Type",
             styles: PosStyles(bold: true, align: PosAlign.left),
             width: 5),
         PosColumn(
-            text: ": $receipttype" == ""
-                ? ""
-                : receipttype == "CH"
-                    ? "CASH"
-                    : receipttype == "CC"
-                        ? "CASH & CARD"
-                        : "CARD",
+            text: ReceiptType,
             styles: PosStyles(bold: true, align: PosAlign.left),
             width: 7)
       ]);
@@ -2329,7 +2374,7 @@ class API {
           styles: PosStyles(align: PosAlign.center));
       //bytes += printer.emptyLines(1);
       List<dynamic> invoiceidlistdata =
-          invoiceid.split("").map(int.parse).toList();
+          invoiceno.split("").map(int.parse).toList();
       print(invoiceidlistdata);
       bytes += printer.barcode(Barcode.codabar(invoiceidlistdata),
           width: 10, height: 90);

@@ -58,7 +58,7 @@ class _StocksListState extends State<StocksList> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: API.tilecolor,
-        title: Text(
+        title: const Text(
           "Stocks Report",
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -67,65 +67,6 @@ class _StocksListState extends State<StocksList> {
               fontSize: 15,
               fontWeight: FontWeight.w400),
         ),
-        actions: [
-          Row(
-            children: [
-              Text(
-                "All Items".toString(),
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: API.tilewhite,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400),
-              ),
-              Switch(
-                onChanged: (val) async {
-                  setState(() {
-                    load = true;
-                    stocktype = !stocktype;
-                  });
-                  final dynamic storelistresponse = await API.storeListAPI(
-                      "",
-                      selectedbrand.isEmpty ? "" : selectedbrand["id"],
-                      selectedlocation.isEmpty ? "" : selectedlocation["id"],
-                      stocktype ? "1" : "2",
-                      widget.token);
-                  print(storelistresponse);
-                  if (storelistresponse["status"] == "success") {
-                    setState(() {
-                      storelist = storelistresponse["data"];
-                      load = false;
-                    });
-                  } else {
-                    setState(() {
-                      load = false;
-                    });
-                    Get.snackbar(
-                        "Failed", storelistresponse["message"].toString(),
-                        backgroundColor: Colors.white,
-                        maxWidth: MediaQuery.of(context).size.width / 4,
-                        colorText: Colors.red);
-                  }
-                },
-                value: stocktype,
-                activeColor: Colors.green,
-                activeTrackColor: Colors.green,
-                inactiveThumbColor: Colors.redAccent,
-                inactiveTrackColor: Colors.redAccent,
-              ),
-              Text(
-                "Having Stock".toString(),
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: API.tilewhite,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400),
-              ),
-            ],
-          ),
-        ],
       ),
       body: load
           ? Center(
@@ -139,7 +80,7 @@ class _StocksListState extends State<StocksList> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       height: 10,
                     ),
                     Container(

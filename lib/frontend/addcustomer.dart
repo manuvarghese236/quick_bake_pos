@@ -14,6 +14,7 @@ import 'package:windowspos/frontend/successpage.dart';
 import '../models/contact.dart';
 
 class AddCustomer extends StatefulWidget {
+  static String TYPE_FROM_INVOICE = "1";
   final String type;
   String? customerId;
   final String token;
@@ -561,7 +562,7 @@ class _AddCustomerState extends State<AddCustomer> {
 
                                     print(savecustomerresponse);
                                     setState(() {
-                                      isLoading = true;
+                                      isLoading = false;
                                     });
                                     if (savecustomerresponse["status"] ==
                                         "success") {
@@ -571,16 +572,31 @@ class _AddCustomerState extends State<AddCustomer> {
                                                 screen: dashboard()),
                                             context: context);
                                       } else {
-                                        Navigator.pop(context);
-                                        pushWidget(
-                                            newPage: HomePage(
-                                                token: widget.token,
-                                                userdetails: widget.userdetails,
-                                                usbdevice: widget.usbdevice,
-                                                selectedcustomerid:
-                                                    savecustomerresponse["data"]
-                                                        ["user_id"]),
-                                            context: context);
+                                        var data = {
+                                          "id": savecustomerresponse["data"]
+                                              ["customer_id"],
+                                          "name": customernamecontroller.text,
+                                          "phone": mobilecontroller.text,
+                                          "email": Customeremailcontroller.text,
+                                          "location": "",
+                                          "contact":
+                                              savecustomerresponse["data"]
+                                                  ["contact"]
+                                        };
+                                        Navigator.pop(context, data);
+                                        //This is for returning from customer
+
+                                        //
+                                        // Navigator.pop(context);
+                                        // pushWidget(
+                                        //     newPage: HomePage(
+                                        //         token: widget.token,
+                                        //         userdetails: widget.userdetails,
+                                        //         usbdevice: widget.usbdevice,
+                                        //         selectedcustomerid:
+                                        //             savecustomerresponse["data"]
+                                        //                 ["user_id"]),
+                                        //     context: context);
                                       }
                                     } else {
                                       Get.snackbar("Failed",
