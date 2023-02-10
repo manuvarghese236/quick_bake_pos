@@ -25,8 +25,10 @@ class CartModel extends Model {
   double footer_discount = 0;
   double footer_discount_Pecentage = 0.00;
   String footer_discount_text = "";
+  double net_total_before_round_off = 0;
+  double round_off_amount = 0;
   double net_total = 0;
-
+  String orderId = "";
   int get total => cart.length;
   double getTotalofLineDiscount() {
     double totalDiscount = 0;
@@ -132,7 +134,7 @@ class CartModel extends Model {
     totalvat = 0;
     subTotal = 0;
     totaldiscount = 0;
-    net_total = 0;
+    net_total_before_round_off = 0;
     footer_discount = 0;
     cart.forEach((cal) {
       totaldiscount += double.parse(cal.discountvalue.toString());
@@ -140,7 +142,7 @@ class CartModel extends Model {
       double rate = double.parse(cal.rate);
       double eachtotal = double.parse(cal.quantity) * rate;
 
-      net_total += eachtotal;
+      net_total_before_round_off += eachtotal;
 
       total_with_out_vat += double.parse(cal.subtotalafterdiscount.toString());
 
@@ -148,7 +150,8 @@ class CartModel extends Model {
       totalvat += cal.vatafterdiscount;
       footer_discount += cal.discountvalue;
     });
-    net_total = subTotal - footer_discount;
+    net_total_before_round_off = subTotal - footer_discount;
+    roundOff();
     notifyListeners();
   }
 
@@ -163,8 +166,10 @@ class CartModel extends Model {
   }
 
   void removeAll() {
+    orderId = "";
     cart.clear();
     total_with_out_vat = 0;
+    round_off_amount = 0;
     totalvat = 0;
     totaldiscount = 0;
     footer_discount = 0;
@@ -201,5 +206,11 @@ class CartModel extends Model {
       }
     }
     return (_qtyDouble <= (_totalQty - _currenCartQty));
+  }
+
+  void roundOff() {
+    double multiplier = 0.50;
+    net_total = (net_total_before_round_off + multiplier).toInt().toDouble();
+    round_off_amount = net_total_before_round_off - net_total;
   }
 }

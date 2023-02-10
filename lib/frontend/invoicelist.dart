@@ -1161,7 +1161,7 @@ class _ReceiptsState extends State<Receipts> {
                                                   ],
                                                 ),
                                                 Text(
-                                                  "AED : ${double.parse(invoicelist[index]["vat_amount"]).toStringAsFixed(2).toUpperCase()}",
+                                                  "AED : ${SimpleConvert.safeDouble(invoicelist[index]["vat_amount"]).toStringAsFixed(2).toUpperCase()}",
                                                   textAlign: TextAlign.start,
                                                   style: TextStyle(
                                                       color: Colors.green,
@@ -1200,7 +1200,7 @@ class _ReceiptsState extends State<Receipts> {
                                                   ],
                                                 ),
                                                 Text(
-                                                  "AED : ${(double.parse(invoicelist[index]["grand_total"]) - (double.parse(invoicelist[index]["vat_amount"]))).toStringAsFixed(2).toUpperCase()}",
+                                                  "AED : ${(SimpleConvert.safeDouble(invoicelist[index]["grand_total"]) - (SimpleConvert.safeDouble(invoicelist[index]["vat_amount"]))).toStringAsFixed(2).toUpperCase()}",
                                                   textAlign: TextAlign.start,
                                                   style: TextStyle(
                                                       color: Colors.green,
@@ -1239,7 +1239,7 @@ class _ReceiptsState extends State<Receipts> {
                                                   ],
                                                 ),
                                                 Text(
-                                                  "AED : ${double.parse(invoicelist[index]["grand_total"]).toStringAsFixed(2)}",
+                                                  "AED : ${SimpleConvert.safeDouble(invoicelist[index]["grand_total"]).toStringAsFixed(2)}",
                                                   textAlign: TextAlign.start,
                                                   style: TextStyle(
                                                       color: Colors.green,
@@ -1277,7 +1277,7 @@ class _ReceiptsState extends State<Receipts> {
                                             //       ],
                                             //     ),
                                             //     Text(
-                                            //       "AED : ${double.parse(invoicelist[index]["grand_total"]).toStringAsFixed(2).toUpperCase()}",
+                                            //       "AED : ${SimpleConvert.safeDouble(invoicelist[index]["grand_total"]).toStringAsFixed(2).toUpperCase()}",
                                             //       textAlign: TextAlign.start,
                                             //       style: TextStyle(
                                             //           color: Colors.green,
@@ -1503,7 +1503,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                             .spaceEvenly,
                                                                     children: [
                                                                       Text(
-                                                                        double.parse(selectedreceipt!["items"][index]["rate"])
+                                                                        SimpleConvert.safeDouble(selectedreceipt!["items"][index]["rate"])
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1514,7 +1514,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        double.parse(selectedreceipt!["items"][index]["quantity"])
+                                                                        SimpleConvert.safeDouble(selectedreceipt!["items"][index]["quantity"])
                                                                             .toStringAsFixed(0),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1536,8 +1536,8 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        (double.parse(selectedreceipt!["items"][index]["quantity"]) *
-                                                                                double.parse(selectedreceipt!["items"][index]["rate"]))
+                                                                        (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["quantity"]) *
+                                                                                SimpleConvert.safeDouble(selectedreceipt!["items"][index]["rate"]))
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1548,7 +1548,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        (double.parse(selectedreceipt!["items"][index]["discount"]))
+                                                                        (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["discount"]))
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1559,8 +1559,8 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        (double.parse(selectedreceipt!["items"][index]["total_amount"]) -
-                                                                                double.parse(selectedreceipt!["items"][index]["tax_vat_amount"]))
+                                                                        (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["total_amount"]) -
+                                                                                SimpleConvert.safeDouble(selectedreceipt!["items"][index]["tax_vat_amount"]))
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1571,7 +1571,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        (double.parse(selectedreceipt!["items"][index]["tax_vat_amount"]))
+                                                                        (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["tax_vat_amount"]))
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1582,7 +1582,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                                 'Montserrat'),
                                                                       ),
                                                                       Text(
-                                                                        double.parse(selectedreceipt!["items"][index]["total_amount"])
+                                                                        SimpleConvert.safeDouble(selectedreceipt!["items"][index]["total_amount"])
                                                                             .toStringAsFixed(2),
                                                                         style: TextStyle(
                                                                             color: Colors
@@ -1746,8 +1746,8 @@ class _ReceiptsState extends State<Receipts> {
                                                                             "total_wo_vat"],
                                                                     "vat": selectedreceipt![
                                                                         "vat_amount"],
-                                                                    "total_without_vat": (double.parse(selectedreceipt!["grand_total"]) -
-                                                                            (double.parse(selectedreceipt![
+                                                                    "total_without_vat": (SimpleConvert.safeDouble(selectedreceipt!["grand_total"]) -
+                                                                            (SimpleConvert.safeDouble(selectedreceipt![
                                                                                 "vat_amount"])))
                                                                         .toStringAsFixed(
                                                                             2)
@@ -2069,7 +2069,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                               .toString() ==
                                                                           ""
                                                                       ? "NA"
-                                                                      : double.parse(selectedreceipt!["received_amount"]
+                                                                      : SimpleConvert.safeDouble(selectedreceipt!["received_amount"]
                                                                               .toString())
                                                                           .toStringAsFixed(
                                                                               2),
@@ -2581,7 +2581,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                               fontFamily: 'Montserrat'),
                                                                         ),
                                                                         Text(
-                                                                          double.parse(selectedreceipt!["grand_total"])
+                                                                          SimpleConvert.safeDouble(selectedreceipt!["grand_total"])
                                                                               .toStringAsFixed(2),
                                                                           textAlign:
                                                                               TextAlign.start,
@@ -2616,7 +2616,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                                       Padding(
                                                                                         padding: const EdgeInsets.symmetric(vertical: 5),
                                                                                         child: Text(
-                                                                                          double.parse((double.parse(receivedamountcontroller.text) - double.parse(selectedreceipt!["grand_total"])).toString()).toStringAsFixed(2),
+                                                                                          SimpleConvert.safeDouble((SimpleConvert.safeDouble(receivedamountcontroller.text) - SimpleConvert.safeDouble(selectedreceipt!["grand_total"])).toString()).toStringAsFixed(2),
                                                                                           textAlign: TextAlign.start,
                                                                                           style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                                                                         ),
@@ -2634,7 +2634,7 @@ class _ReceiptsState extends State<Receipts> {
                                                                         //             style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                                                         //           ),
                                                                         //           Text(
-                                                                        //             double.parse((double.parse(receivedamountcontroller.text) - double.parse(selectedreceipt!["grand_total"])).toString()).toStringAsFixed(2),
+                                                                        //             SimpleConvert.safeDouble((SimpleConvert.safeDouble(receivedamountcontroller.text) - SimpleConvert.safeDouble(selectedreceipt!["grand_total"])).toString()).toStringAsFixed(2),
                                                                         //             textAlign: TextAlign.start,
                                                                         //             style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                                                         //           ),

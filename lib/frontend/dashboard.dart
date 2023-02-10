@@ -10,6 +10,7 @@ import 'package:windowspos/frontend/customers.dart';
 import 'package:windowspos/frontend/homepage.dart';
 import 'package:windowspos/frontend/invoicelist.dart';
 import 'package:windowspos/frontend/login.dart';
+import 'package:windowspos/frontend/new_order.dart';
 import 'package:windowspos/frontend/printerconfig.dart';
 import 'package:windowspos/frontend/reports.dart';
 import 'package:windowspos/frontend/reports/closing.dart';
@@ -19,6 +20,8 @@ import 'package:windowspos/frontend/reports/itemslist.dart';
 import 'package:windowspos/frontend/reports/stocks.dart';
 import 'package:windowspos/frontend/stockslist.dart';
 import 'package:windowspos/main.dart';
+
+import 'orderlist.dart';
 
 class dashboard extends StatefulWidget {
   const dashboard({Key? key}) : super(key: key);
@@ -224,6 +227,136 @@ class _dashboardState extends State<dashboard> {
                             // } else {
                             print("HomePage");
                             slideRightWidget(
+                                newPage: NewOrder(
+                                  token: userdetails["token"],
+                                  userdetails: userdetails,
+                                  usbdevice: usbdevice,
+                                ),
+                                context: context);
+                            // }
+                          },
+                          child: Container(
+                            height: MediaQuery.of(context).size.height / 5,
+                            width: MediaQuery.of(context).size.width / 5,
+                            // color: Colors.yellow,
+                            child: Card(
+                              elevation: 20,
+                              color: API.tilecolor,
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 10, right: 10),
+                                    child: Material(
+                                      type: MaterialType.transparency,
+                                      child: Ink(
+                                        decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: API.tilewhite, width: 1),
+                                            color: API.tilecolor,
+                                            borderRadius:
+                                                BorderRadius.circular(50.0)),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Icon(
+                                            Icons.handshake,
+                                            color: API.tilewhite,
+                                            size: 40,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    "Order / مبيعات",
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        color: API.tilewhite,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w400),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            // slideRightWidget(
+                            //     newPage: Reports(
+                            //         token: userdetails["token"],
+                            //         userid: userdetails["userid"],
+                            //         username: userdetails["name"]),
+                            //     context: context);
+                            // setState(() {
+                            //   reportselected = !reportselected;
+                            // });
+                            slideRightWidget(
+                                newPage: OrderList(
+                                  token: userdetails["token"],
+                                  usbdevice: usbdevice,
+                                  userdetails: userdetails,
+                                  userid: userdetails["userid"],
+                                ),
+                                context: context);
+                          },
+                          child: Container(
+                            height: MediaQuery.of(context).size.height / 5,
+                            width: MediaQuery.of(context).size.width / 5,
+                            // color: Colors.yellow,
+                            child: Card(
+                              elevation: 20,
+                              color: API.tilecolor,
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 10, right: 10),
+                                    child: Material(
+                                      type: MaterialType.transparency,
+                                      child: Ink(
+                                        decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: API.tilewhite, width: 1),
+                                            color: API.tilecolor,
+                                            borderRadius:
+                                                BorderRadius.circular(50.0)),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Icon(
+                                            Icons
+                                                .check_box_outline_blank_outlined,
+                                            color: API.tilewhite,
+                                            size: 40,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    "Order List  / مخازن",
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        color: API.tilewhite,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w400),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            // if (ipaddresscontroller.text == "") {
+                            //   Get.snackbar("Failed", "Please add printer ip",
+                            //       backgroundColor: Colors.white,
+                            //       colorText: Colors.red);
+                            // } else {
+                            print("HomePage");
+                            slideRightWidget(
                                 newPage: HomePage(
                                   token: userdetails["token"],
                                   userdetails: userdetails,
@@ -234,7 +367,7 @@ class _dashboardState extends State<dashboard> {
                           },
                           child: Container(
                             height: MediaQuery.of(context).size.height / 5,
-                            width: MediaQuery.of(context).size.width / 4,
+                            width: MediaQuery.of(context).size.width / 5,
                             // color: Colors.yellow,
                             child: Card(
                               elevation: 20,
@@ -298,7 +431,7 @@ class _dashboardState extends State<dashboard> {
                           },
                           child: Container(
                             height: MediaQuery.of(context).size.height / 5,
-                            width: MediaQuery.of(context).size.width / 4,
+                            width: MediaQuery.of(context).size.width / 5,
                             // color: Colors.yellow,
                             child: Card(
                               elevation: 20,
@@ -354,7 +487,7 @@ class _dashboardState extends State<dashboard> {
                           },
                           child: Container(
                             height: MediaQuery.of(context).size.height / 5,
-                            width: MediaQuery.of(context).size.width / 4,
+                            width: MediaQuery.of(context).size.width / 5,
                             // color: Colors.yellow,
                             child: Card(
                               elevation: 20,
@@ -386,70 +519,6 @@ class _dashboardState extends State<dashboard> {
                                   ),
                                   Text(
                                     "Customers  / عملاء",
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        fontFamily: 'Montserrat',
-                                        color: API.tilewhite,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w400),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            // slideRightWidget(
-                            //     newPage: Reports(
-                            //         token: userdetails["token"],
-                            //         userid: userdetails["userid"],
-                            //         username: userdetails["name"]),
-                            //     context: context);
-                            // setState(() {
-                            //   reportselected = !reportselected;
-                            // });
-                            slideRightWidget(
-                                newPage: Stocks(
-                                  token: userdetails["token"],
-                                ),
-                                context: context);
-                          },
-                          child: Container(
-                            height: MediaQuery.of(context).size.height / 5,
-                            width: MediaQuery.of(context).size.width / 4,
-                            // color: Colors.yellow,
-                            child: Card(
-                              elevation: 20,
-                              color: API.tilecolor,
-                              child: Row(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, right: 10),
-                                    child: Material(
-                                      type: MaterialType.transparency,
-                                      child: Ink(
-                                        decoration: BoxDecoration(
-                                            border: Border.all(
-                                                color: API.tilewhite, width: 1),
-                                            color: API.tilecolor,
-                                            borderRadius:
-                                                BorderRadius.circular(50.0)),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Icon(
-                                            Icons
-                                                .check_box_outline_blank_outlined,
-                                            color: API.tilewhite,
-                                            size: 40,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    "Stocks  / مخازن",
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                         fontFamily: 'Montserrat',
@@ -530,6 +599,75 @@ class _dashboardState extends State<dashboard> {
                                   ),
                                 ),
                               ), */
+
+                              GestureDetector(
+                                onTap: () {
+                                  // slideRightWidget(
+                                  //     newPage: Reports(
+                                  //         token: userdetails["token"],
+                                  //         userid: userdetails["userid"],
+                                  //         username: userdetails["name"]),
+                                  //     context: context);
+                                  // setState(() {
+                                  //   reportselected = !reportselected;
+                                  // });
+                                  slideRightWidget(
+                                      newPage: Stocks(
+                                        token: userdetails["token"],
+                                      ),
+                                      context: context);
+                                },
+                                child: Container(
+                                  height:
+                                      MediaQuery.of(context).size.height / 5,
+                                  width: MediaQuery.of(context).size.width / 5,
+                                  // color: Colors.yellow,
+                                  child: Card(
+                                    elevation: 20,
+                                    color: API.tilecolor,
+                                    child: Row(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              left: 10, right: 10),
+                                          child: Material(
+                                            type: MaterialType.transparency,
+                                            child: Ink(
+                                              decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                      color: API.tilewhite,
+                                                      width: 1),
+                                                  color: API.tilecolor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          50.0)),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: Icon(
+                                                  Icons
+                                                      .check_box_outline_blank_outlined,
+                                                  color: API.tilewhite,
+                                                  size: 40,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          "Stocks  / مخازن",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              color: API.tilewhite,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w400),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                               GestureDetector(
                                 onTap: () {
                                   slideRightWidget(
@@ -545,7 +683,7 @@ class _dashboardState extends State<dashboard> {
                                 child: Container(
                                   height:
                                       MediaQuery.of(context).size.height / 5,
-                                  width: MediaQuery.of(context).size.width / 4,
+                                  width: MediaQuery.of(context).size.width / 5,
                                   // color: Colors.yellow,
                                   child: Card(
                                     elevation: 20,
@@ -609,7 +747,7 @@ class _dashboardState extends State<dashboard> {
                                 child: Container(
                                   height:
                                       MediaQuery.of(context).size.height / 5,
-                                  width: MediaQuery.of(context).size.width / 4,
+                                  width: MediaQuery.of(context).size.width / 5,
                                   // color: Colors.yellow,
                                   child: Card(
                                     elevation: 20,
@@ -670,7 +808,7 @@ class _dashboardState extends State<dashboard> {
                                 child: Container(
                                   height:
                                       MediaQuery.of(context).size.height / 5,
-                                  width: MediaQuery.of(context).size.width / 4,
+                                  width: MediaQuery.of(context).size.width / 5,
                                   // color: Colors.yellow,
                                   child: Card(
                                     elevation: 20,

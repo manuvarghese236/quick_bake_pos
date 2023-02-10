@@ -63,8 +63,11 @@ class _HomePageState extends State<HomePage> {
   FocusNode barcodeFocusNode = FocusNode();
   FocusNode itemFocusnode = FocusNode();
   var customerContactList = [];
+  var defaultCustomerContactList = [];
   String? selectedContact = null;
+  String? defaultselectedContact = null;
   CustomerContact? selectedCustomerContact;
+  CustomerContact? defaultCustomerContact;
   String userId = "0";
   String userWareHouseId = "";
   // TextEditingController cashpluscardcashcontroller = TextEditingController();
@@ -78,6 +81,34 @@ class _HomePageState extends State<HomePage> {
   dynamic imagebytes;
   Uint8List? imgdatabytes;
   Uint8List? imgrowdatabytes;
+  Future<bool> _onWillPop(CartModel model) async {
+    return (await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: new Text('Are you sure?'),
+            content: new Text('Do you want to exit'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pop(false), //<-- SEE HERE
+                child: new Text('No'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ClearAllData(model);
+                  itemdetails = {};
+                  customerdetails = {};
+                  model = CartModel();
+                  pushWidgetWhileRemove(context: context, newPage: dashboard());
+                },
+                // <-- SEE HERE
+                child: new Text('Yes'),
+              ),
+            ],
+          ),
+        )) ??
+        false;
+  }
 
   Future getSetting() async {
     try {
@@ -137,16 +168,29 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           imgdatabytes = logoimgBytes;
           imgrowdatabytes = logorowimgBytes;
-          customerdetails = customerdetailsid == -1
-              ? {}
-              : {
-                  "id": customerdetailsresponse[customerdetailsid].id,
-                  "name": customerdetailsresponse[customerdetailsid].name,
-                  "phone": customerdetailsresponse[customerdetailsid].phone,
-                  "email": customerdetailsresponse[customerdetailsid].email,
-                  "location":
-                      customerdetailsresponse[customerdetailsid].location
-                };
+
+          if (customerdetailsid == -1) {
+            customerdetails = {};
+          } else {
+            customerdetails = {
+              "id": customerdetailsresponse[customerdetailsid].id,
+              "name": customerdetailsresponse[customerdetailsid].name,
+              "phone": customerdetailsresponse[customerdetailsid].phone,
+              "email": customerdetailsresponse[customerdetailsid].email,
+              "location": customerdetailsresponse[customerdetailsid].location
+            };
+            defaultcustomerdetails = customerdetails;
+            try {
+              customerContactList =
+                  customerdetailsresponse[customerdetailsid].arr_contacts;
+              selectedContact = customerContactList[0]["id"].toString();
+              defaultCustomerContactList =
+                  customerdetailsresponse[customerdetailsid].arr_contacts;
+              defaultselectedContact = selectedContact;
+            } catch (ex) {
+              print(ex);
+            }
+          }
         });
         setState(() {
           selectedreceipttype = receipttype[0];
@@ -165,7 +209,8 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       receivedamountcontroller.text =
           (double.parse(card_amount == "" ? "0.00" : card_amount) +
-                  double.parse(cash_amount == "" ? "0.00" : cash_amount))
+                  SimpleConvert.safeDouble(
+                      cash_amount == "" ? "0.00" : cash_amount))
               .toStringAsFixed(2);
     });
   }
@@ -181,6 +226,7 @@ class _HomePageState extends State<HomePage> {
   //variables
   Map<String, dynamic> itemdetails = {};
   Map<String, dynamic> customerdetails = {};
+  Map<String, dynamic> defaultcustomerdetails = {};
   Map<String, dynamic> selectedunit = {};
   Map<String, dynamic> selectedsalesman = {};
   List<dynamic> array_units = [];
@@ -205,7 +251,7 @@ class _HomePageState extends State<HomePage> {
   // calculateReceivedAmount() {
   //   setState(() {
   //     receivedamountcontroller.text =
-  //         (double.parse(cashcard_cash) + double.parse(cashcard_card))
+  //         (double.parse(cashcard_cash) +SimpleConvert.safeDouble(cashcard_card))
   //             .toStringAsFixed(2);
   //   });
   //   print("This is received total");
@@ -219,20 +265,20 @@ class _HomePageState extends State<HomePage> {
   //   print("Inside checking total before adding to cart");
   //   print(itemdetails);
   //   num totalafterdiscount = (double.parse(itemdetails["rate"].toString()) *
-  //           double.parse(itemdetails["quantity"].toString())) -
-  //       double.parse(itemdetails["discount"].toString());
+  //          SimpleConvert.safeDouble(itemdetails["quantity"].toString())) -
+  //      SimpleConvert.safeDouble(itemdetails["discount"].toString());
   //   print("The total after discount only");
   //   print(totalafterdiscount);
   //   if (double.parse(itemdetails["discount_percentage"].toString()) == 0) {
   //     total = totalafterdiscount;
   //   } else {
   //     totalafterdiscountpercentage = (totalafterdiscount *
-  //             double.parse(itemdetails["discount_percentage"].toString())) /
+  //            SimpleConvert.safeDouble(itemdetails["discount_percentage"].toString())) /
   //         100;
   //     total = totalafterdiscount - totalafterdiscountpercentage;
   //   }
   // num totalafterdiscountpercentage =  (totalafterdiscount *
-  //         double.parse(itemdetails["discount_percentage"].toString())) /
+  //        SimpleConvert.safeDouble(itemdetails["discount_percentage"].toString())) /
   //     100;
   // {id: 1052, part_number: ABC-1001, description: Test Item 01, brand_id: 2, brand_name: SPRAY, rate: 200.00, quantity: 1, warehouse_id: 5, unit_name: null, unit_id: null, arr_units: [{id: 52, unit_name: PCS, unit_factor: 1.000000, unit_price: 200.00}], tax_code: 5, discount: 20, available_qty: 973.000000000,}
   // num beforeselect_total = 0.00;
@@ -250,7 +296,7 @@ class _HomePageState extends State<HomePage> {
     print(itemdetails);
 
     num totalbeforediscount = (double.parse(itemdetails["rate"].toString()) *
-        double.parse(itemdetails["quantity"].toString()));
+        SimpleConvert.safeDouble(itemdetails["quantity"].toString()));
     print("The total after discount only");
     print(totalbeforediscount);
 
@@ -259,14 +305,15 @@ class _HomePageState extends State<HomePage> {
           SimpleConvert.safeDouble(itemdetails["discount"].toString());
     } else {
       totalafterdiscountpercentage = (totalbeforediscount *
-              double.parse(itemdetails["discount_percentage"].toString())) /
+              SimpleConvert.safeDouble(
+                  itemdetails["discount_percentage"].toString())) /
           100;
       total = totalbeforediscount -
           totalafterdiscountpercentage -
-          double.parse(itemdetails["discount"].toString());
+          SimpleConvert.safeDouble(itemdetails["discount"].toString());
     }
     // num totalafterdiscountpercentage =  (totalafterdiscount *
-    //         double.parse(itemdetails["discount_percentage"].toString())) /
+    //        SimpleConvert.safeDouble(itemdetails["discount_percentage"].toString())) /
     //     100;
     // {id: 1052, part_number: ABC-1001, description: Test Item 01, brand_id: 2, brand_name: SPRAY, rate: 200.00, quantity: 1, warehouse_id: 5, unit_name: null, unit_id: null, arr_units: [{id: 52, unit_name: PCS, unit_factor: 1.000000, unit_price: 200.00}], tax_code: 5, discount: 20, available_qty: 973.000000000,}
     // num beforeselect_total = 0.00;
@@ -275,7 +322,7 @@ class _HomePageState extends State<HomePage> {
     // print(totalafterdiscountpercentage);
     // total = tot
     return {
-      "total": double.parse(total.toString()).toStringAsFixed(6),
+      "total": SimpleConvert.safeDouble(total.toString()).toStringAsFixed(6),
       "discountvalue":
           SimpleConvert.safeDouble(itemdetails["discount"].toString())
               .toStringAsFixed(6),
@@ -285,16 +332,16 @@ class _HomePageState extends State<HomePage> {
       "subtotalafterdiscount":
           ((SimpleConvert.safeDouble(total.toString()) * 100) /
                   (100 +
-                      double.parse(SimpleConvert.safeDouble(
+                      SimpleConvert.safeDouble(SimpleConvert.safeDouble(
                               itemdetails["tax_code"].toString())
                           .toStringAsFixed(1))))
               .toStringAsFixed(6),
       "vatafterdiscount": (double.parse(total.toString()) -
               ((double.parse(total.toString()) * 100) /
                   (100 +
-                      double.parse(
-                          double.parse(itemdetails["tax_code"].toString())
-                              .toStringAsFixed(1)))))
+                      SimpleConvert.safeDouble(SimpleConvert.safeDouble(
+                              itemdetails["tax_code"].toString())
+                          .toStringAsFixed(1)))))
           .toStringAsFixed(6)
     };
   }
@@ -343,9 +390,10 @@ class _HomePageState extends State<HomePage> {
         var product_id = itemdetails["id"];
         model.cart.forEach((element) {
           if (element.id == product_id) {
-            double quantity = double.parse(element.quantity);
+            double quantity = SimpleConvert.safeDouble(element.quantity);
 
-            double newQty = double.parse(itemdetails["quantity"].toString());
+            double newQty =
+                SimpleConvert.safeDouble(itemdetails["quantity"].toString());
             quantity += newQty;
             element.quantity = quantity.toInt().toString();
           }
@@ -448,7 +496,7 @@ class _HomePageState extends State<HomePage> {
                                     children: [
                                       IconButton(
                                           onPressed: () {
-                                            Navigator.pop(context);
+                                            _onWillPop(model);
                                           },
                                           icon: const Icon(
                                             Icons.arrow_back,
@@ -1311,7 +1359,8 @@ class _HomePageState extends State<HomePage> {
                                                                   "",
                                                                   val,
                                                                   userWareHouseId,
-                                                                  widget.token);
+                                                                  widget.token,
+                                                                  API.DISPLAY_TYPE_STOCK_PROUDCT);
                                                           print("Thi is resp");
                                                           print(searchresponse
                                                               .length);
@@ -1534,14 +1583,16 @@ class _HomePageState extends State<HomePage> {
                                                                   "",
                                                                   "",
                                                                   userWareHouseId,
-                                                                  widget.token);
+                                                                  widget.token,
+                                                                  API.DISPLAY_TYPE_STOCK_PROUDCT);
                                                         } else {
                                                           return await API
                                                               .getItemsQueryList(
                                                                   value,
                                                                   "",
                                                                   userWareHouseId,
-                                                                  widget.token);
+                                                                  widget.token,
+                                                                  API.DISPLAY_TYPE_STOCK_PROUDCT);
                                                         }
                                                       },
                                                       itemBuilder: (context,
@@ -1551,7 +1602,7 @@ class _HomePageState extends State<HomePage> {
                                                             itemslist;
                                                         return ListTile(
                                                           title: Text(
-                                                            "${listdata!.barcode.toUpperCase()} [ ${listdata.description.toUpperCase()} ]  [ ${listdata.availableqty.isEmpty ? "" : double.parse(listdata.availableqty).toString().toUpperCase()} ] ",
+                                                            "${listdata!.barcode.toUpperCase()} [ ${listdata.description.toUpperCase()} ]  [ ${listdata.availableqty.isEmpty ? "" : SimpleConvert.safeDouble(listdata.availableqty).toString().toUpperCase()} ] ",
                                                             overflow:
                                                                 TextOverflow
                                                                     .ellipsis,
@@ -2254,9 +2305,9 @@ class _HomePageState extends State<HomePage> {
                                                               dynamic datacal =
                                                                   snapshot.data;
                                                               return Text(
-                                                                double.parse(datacal[
-                                                                            "total"]
-                                                                        .toString())
+                                                                SimpleConvert.safeDouble(
+                                                                        datacal["total"]
+                                                                            .toString())
                                                                     .toStringAsFixed(
                                                                         2),
                                                                 style: TextStyle(
@@ -2771,7 +2822,7 @@ class _HomePageState extends State<HomePage> {
                                                                           8,
                                                                       child:
                                                                           Text(
-                                                                        double.parse((double.parse(model.cart[index].rate) * double.parse(model.cart[index].quantity)).toString())
+                                                                        SimpleConvert.safeDouble((double.parse(model.cart[index].rate) * SimpleConvert.safeDouble(model.cart[index].quantity)).toString())
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -2796,7 +2847,7 @@ class _HomePageState extends State<HomePage> {
                                                                       child:
                                                                           Text(
                                                                         // (double.parse(model.cart[index].discount.toString()) *
-                                                                        //         double.parse(model.cart[index].quantity.toString()))
+                                                                        //        SimpleConvert.safeDouble(model.cart[index].quantity.toString()))
                                                                         //     .toStringAsFixed(2),
                                                                         model
                                                                             .cart[index]
@@ -2822,7 +2873,7 @@ class _HomePageState extends State<HomePage> {
                                                                           8,
                                                                       child:
                                                                           Text(
-                                                                        double.parse(model.cart[index].subtotalafterdiscount.toString())
+                                                                        SimpleConvert.safeDouble(model.cart[index].subtotalafterdiscount.toString())
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -2846,16 +2897,16 @@ class _HomePageState extends State<HomePage> {
                                                                       //     .yellow,
                                                                       child:
                                                                           Text(
-                                                                        // double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())
+                                                                        //SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())
                                                                         //     .toStringAsFixed(2)
-                                                                        // double.parse(((double.parse(((double.parse((double.parse(model.cart[index].rate) * double.parse(model.cart[index].quantity)).toString())) - ((double.parse(model.cart[index].discount.toString()) * double.parse(model.cart[index].quantity.toString())))).toString()) * 5) / 105).toString())
+                                                                        //SimpleConvert.safeDouble(((double.parse(((double.parse((double.parse(model.cart[index].rate) *SimpleConvert.safeDouble(model.cart[index].quantity)).toString())) - ((double.parse(model.cart[index].discount.toString()) *SimpleConvert.safeDouble(model.cart[index].quantity.toString())))).toString()) * 5) / 105).toString())
                                                                         //     .toStringAsFixed(2)
 
-                                                                        // ((double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)).toString()) * double.parse(model.cart[index].tax_code)) /
+                                                                        // ((double.parse((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)).toString()) *SimpleConvert.safeDouble(model.cart[index].tax_code)) /
                                                                         //         100)
                                                                         //     .toStringAsFixed(
                                                                         //         2),
-                                                                        double.parse(model.cart[index].vatafterdiscount.toString())
+                                                                        SimpleConvert.safeDouble(model.cart[index].vatafterdiscount.toString())
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -2879,15 +2930,15 @@ class _HomePageState extends State<HomePage> {
                                                                       //     .red,
                                                                       child:
                                                                           Text(
-                                                                        // double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate))
+                                                                        //SimpleConvert.safeDouble((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate))
                                                                         //         .toString())
                                                                         //     .toStringAsFixed(
                                                                         //         2),
-                                                                        // double.parse(((double.parse((double.parse(model.cart[index].rate) * double.parse(model.cart[index].quantity)).toString())) - ((double.parse(model.cart[index].discount.toString()) * double.parse(model.cart[index].quantity.toString())))).toString())
+                                                                        //SimpleConvert.safeDouble(((double.parse((double.parse(model.cart[index].rate) *SimpleConvert.safeDouble(model.cart[index].quantity)).toString())) - ((double.parse(model.cart[index].discount.toString()) *SimpleConvert.safeDouble(model.cart[index].quantity.toString())))).toString())
                                                                         //     .toStringAsFixed(2)
-                                                                        // double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString())) + double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())).toString())
+                                                                        //SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString())) +SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())).toString())
                                                                         //     .toStringAsFixed(2),
-                                                                        double.parse(model.cart[index].totalafterdiscount.toString())
+                                                                        SimpleConvert.safeDouble(model.cart[index].totalafterdiscount.toString())
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -3231,7 +3282,7 @@ class _HomePageState extends State<HomePage> {
                                                         //                         .center,
                                                         //                 children: [
                                                         //                   Text(
-                                                        //                     (double.parse(model.cart[index].discount.toString()) * double.parse(model.cart[index].quantity.toString()))
+                                                        //                     (double.parse(model.cart[index].discount.toString()) *SimpleConvert.safeDouble(model.cart[index].quantity.toString()))
                                                         //                         .toStringAsFixed(2),
                                                         //                     textAlign:
                                                         //                         TextAlign.start,
@@ -3281,10 +3332,10 @@ class _HomePageState extends State<HomePage> {
                                                         //                         .center,
                                                         //                 children: [
                                                         //                   Text(
-                                                        //                     double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())
+                                                        //                    SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())
                                                         //                         .toStringAsFixed(2)
 
-                                                        //                     // ((double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)).toString()) * double.parse(model.cart[index].tax_code)) /
+                                                        //                     // ((double.parse((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)).toString()) *SimpleConvert.safeDouble(model.cart[index].tax_code)) /
                                                         //                     //         100)
                                                         //                     //     .toStringAsFixed(
                                                         //                     //         2),
@@ -3337,11 +3388,11 @@ class _HomePageState extends State<HomePage> {
                                                         //                         .center,
                                                         //                 children: [
                                                         //                   Text(
-                                                        //                     // double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate))
+                                                        //                     //SimpleConvert.safeDouble((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate))
                                                         //                     //         .toString())
                                                         //                     //     .toStringAsFixed(
                                                         //                     //         2),
-                                                        //                     double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString())) + double.parse(((double.parse(((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) * double.parse(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())).toString())
+                                                        //                    SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString())) +SimpleConvert.safeDouble(((double.parse(((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)) - (double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].discount))).toString()) * (double.parse(model.cart[index].tax_code))) / 100).toString())).toString())
                                                         //                         .toStringAsFixed(2),
                                                         //                     textAlign:
                                                         //                         TextAlign.start,
@@ -3391,9 +3442,9 @@ class _HomePageState extends State<HomePage> {
                                                         //         //                 .center,
                                                         //         //         children: [
                                                         //         //           Text(
-                                                        //         //             ((((double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)).toString()) * double.parse(model.cart[index].tax_code)) / 100) +
-                                                        //         //                         double.parse((double.parse(model.cart[index].quantity) * double.parse(model.cart[index].rate)).toString())) +
-                                                        //         //                     double.parse(model.cart[index].discount))
+                                                        //         //             ((((double.parse((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)).toString()) *SimpleConvert.safeDouble(model.cart[index].tax_code)) / 100) +
+                                                        //         //                        SimpleConvert.safeDouble((double.parse(model.cart[index].quantity) *SimpleConvert.safeDouble(model.cart[index].rate)).toString())) +
+                                                        //         //                    SimpleConvert.safeDouble(model.cart[index].discount))
                                                         //         //                 .toStringAsFixed(2),
                                                         //         //             textAlign:
                                                         //         //                 TextAlign
@@ -3503,7 +3554,8 @@ class _HomePageState extends State<HomePage> {
                                                                       result,
                                                                       userWareHouseId,
                                                                       widget
-                                                                          .token);
+                                                                          .token,
+                                                                      API.DISPLAY_TYPE_STOCK_PROUDCT);
                                                               print(
                                                                   "Thi is resp");
                                                               print(
@@ -3749,7 +3801,7 @@ class _HomePageState extends State<HomePage> {
                                                                       "The grand total value inside is else");
                                                                   print((double.parse((model.total_with_out_vat)
                                                                               .toString()) +
-                                                                          double.parse((model.totalvat)
+                                                                          SimpleConvert.safeDouble((model.totalvat)
                                                                               .toString()))
                                                                       .toStringAsFixed(
                                                                           2));
@@ -3781,7 +3833,7 @@ class _HomePageState extends State<HomePage> {
                                                                         .total_with_out_vat);
                                                                     if (selectedreceipttype["code"] ==
                                                                             "CR" ||
-                                                                        double.parse(receivedamountcontroller.text) ==
+                                                                        SimpleConvert.safeDouble(receivedamountcontroller.text) ==
                                                                             model.net_total) {
                                                                       // Real saving start here
                                                                       var received_amount = receivedamountcontroller
@@ -3792,6 +3844,8 @@ class _HomePageState extends State<HomePage> {
                                                                           await API
                                                                               .convertData(model.cart);
                                                                       final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(
+                                                                          model
+                                                                              .orderId,
                                                                           userId,
                                                                           customerdetails[
                                                                               "id"],
@@ -3818,6 +3872,9 @@ class _HomePageState extends State<HomePage> {
                                                                               .footer_discount_Pecentage
                                                                               .toString(),
                                                                           homeDelivery,
+                                                                          model
+                                                                              .round_off_amount
+                                                                              .toString(),
                                                                           model
                                                                               .net_total
                                                                               .toString());
@@ -3924,10 +3981,8 @@ class _HomePageState extends State<HomePage> {
                                                                         // });
                                                                         model.net_total =
                                                                             0;
-                                                                        pushWidgetWhileRemove(
-                                                                            newPage:
-                                                                                const SuccessPage(screen: dashboard()),
-                                                                            context: context);
+                                                                        ClearAllData(
+                                                                            model);
                                                                       } else {
                                                                         // setState(() {
                                                                         //   mainloading = false;
@@ -5067,6 +5122,32 @@ class _HomePageState extends State<HomePage> {
                                                         fontFamily:
                                                             'Montserrat'),
                                                   ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    "Round Off Amount"
+                                                        .toUpperCase(),
+                                                    textAlign: TextAlign.start,
+                                                    style: const TextStyle(
+                                                        color: Colors.black,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontFamily:
+                                                            'Montserrat'),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    model.round_off_amount
+                                                        .toStringAsFixed(2),
+                                                    textAlign: TextAlign.start,
+                                                    style: const TextStyle(
+                                                        color: Colors.black,
+                                                        fontSize: 15,
+                                                        fontWeight:
+                                                            FontWeight.w400,
+                                                        fontFamily:
+                                                            'Montserrat'),
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -5144,7 +5225,7 @@ class _HomePageState extends State<HomePage> {
                                                                               .toString())) <=
                                                                       0
                                                                   ? const SizedBox()
-                                                                  : double.parse(receivedamountcontroller
+                                                                  : SimpleConvert.safeDouble(receivedamountcontroller
                                                                               .text) >=
                                                                           (double.parse(
                                                                               (model.net_total).toString()))
@@ -5172,7 +5253,7 @@ class _HomePageState extends State<HomePage> {
                                                                                 Padding(
                                                                                   padding: const EdgeInsets.symmetric(vertical: 5),
                                                                                   child: Text(
-                                                                                    (double.parse(receivedamountcontroller.text) - double.parse((double.parse((model.net_total).toString())).toStringAsFixed(2))).toStringAsFixed(2),
+                                                                                    (double.parse(receivedamountcontroller.text) - SimpleConvert.safeDouble((double.parse((model.net_total).toString())).toStringAsFixed(2))).toStringAsFixed(2),
                                                                                     textAlign: TextAlign.start,
                                                                                     style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                                                                   ),
@@ -5216,7 +5297,10 @@ class _HomePageState extends State<HomePage> {
     receivedamountcontroller.text = "0";
     discountController.text = "0.00";
     cash_amount = "0";
-    card_amount = "";
+    card_amount = "0";
+    customerdetails = defaultcustomerdetails;
+    customerContactList = defaultCustomerContactList;
+    selectedContact = defaultselectedContact;
     selectedreceipttype = receipttype[0];
     model.removeAll();
   }

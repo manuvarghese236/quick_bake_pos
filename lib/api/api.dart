@@ -39,6 +39,9 @@ class API {
   static String baseurl = "http://bluesky01.com/quickbake/index.php?r=";
   static String imgurl = "http://bluesky01.com/quickbake/";
 
+  static String DISPLAY_TYPE_STOCK_PROUDCT = "1";
+  static String DISPLAY_TYPE_ALL_PROUDCT = "2";
+
   static TextStyle textdetailstyle() {
     return TextStyle(
         fontFamily: 'Montserrat',
@@ -562,10 +565,10 @@ class API {
     }
   }
 
-  static Future<List<ItemSchema>> getItemsQueryList(
-      String term, String barcode, String warehouseId, String token) async {
+  static Future<List<ItemSchema>> getItemsQueryList(String term, String barcode,
+      String warehouseId, String token, String displayType) async {
     final itemsearch =
-        '${baseurl}apistore/getlist&term=$term&bar_code=$barcode&warehouse_id=$warehouseId';
+        '${baseurl}apistore/getlist&term=$term&bar_code=$barcode&warehouse_id=$warehouseId&display_type=$displayType';
     print(token);
     print(itemsearch);
     print(itemsearch);
@@ -689,7 +692,7 @@ class API {
       String phone,
       String email,
       String location,
-      String customer_address,
+      String customerAddress,
       List<CustomerContact> ContactList,
       String token) async {
     List arrContacts = [];
@@ -702,7 +705,7 @@ class API {
       "email": email,
       "location": location,
       "phone": phone,
-      "customer_address": customer_address,
+      "customer_address": customerAddress,
       "arr_contacts": arrContacts
     });
     print(token);
@@ -993,6 +996,7 @@ class API {
 
   /// this saving Invoice to the server.
   static Future<Map<String, dynamic>> saveInvoiceAPI(
+    String orderId,
     String userid,
     String customerid,
     String contactId,
@@ -1003,15 +1007,17 @@ class API {
     String token,
     String cashamount,
     String cardamount,
-    String footer_discount,
-    String footer_discount_Pecentage,
+    String footerDiscount,
+    String footerDiscountPecentage,
     bool homeDelivery,
-    String grand_total,
+    String round_off,
+    String grandTotal,
   ) async {
     final saveinvoiceurl = "${baseurl}apiinvoice/SaveInvoice";
     try {
       var data = json.encode(
         {
+          "order_id": orderId,
           "created_by": userid,
           "receipt_type": receipttype,
           "received_amount": receivedamount,
@@ -1021,10 +1027,11 @@ class API {
           "items": items,
           "received_card_amount": cardamount,
           "received_cash_amount": cashamount,
-          "footer_discount": footer_discount,
-          "footer_discount_percentage": footer_discount_Pecentage,
+          "footer_discount": footerDiscount,
+          "footer_discount_percentage": footerDiscountPecentage,
           "home_delivery": homeDelivery ? "Y" : "N",
-          "grand_total": grand_total
+          "round_off": round_off,
+          "grand_total": grandTotal
         },
       );
       print(saveinvoiceurl);
@@ -1058,12 +1065,12 @@ class API {
       String companyname,
       String billingaddress,
       String phone,
-      String default_customer_id,
-      String trn_no,
+      String defaultCustomerId,
+      String trnNo,
       String branchlink,
-      String warehouse_id,
-      String warehouse_name,
-      String master_company_id,
+      String warehouseId,
+      String warehouseName,
+      String masterCompanyId,
       String barcodenabled) async {
     SharedPreferences blueskydehneepos = await SharedPreferences.getInstance();
     try {
@@ -1073,12 +1080,12 @@ class API {
       blueskydehneepos.setString('company_name', companyname);
       blueskydehneepos.setString('billing_address', billingaddress);
       blueskydehneepos.setString('genral_phno', phone);
-      blueskydehneepos.setString('default_customer_id', default_customer_id);
-      blueskydehneepos.setString('trn_no', trn_no);
+      blueskydehneepos.setString('default_customer_id', defaultCustomerId);
+      blueskydehneepos.setString('trn_no', trnNo);
       blueskydehneepos.setString('branchlink', branchlink);
-      blueskydehneepos.setString('warehouse_id', warehouse_id);
-      blueskydehneepos.setString('warehouse_name', warehouse_name);
-      blueskydehneepos.setString('master_company_id', master_company_id);
+      blueskydehneepos.setString('warehouse_id', warehouseId);
+      blueskydehneepos.setString('warehouse_name', warehouseName);
+      blueskydehneepos.setString('master_company_id', masterCompanyId);
       blueskydehneepos.setString('barcodenabled', barcodenabled);
       return {'status': 'success', 'msg': 'done'};
     } catch (e) {
@@ -1163,13 +1170,12 @@ class API {
       String? companyname = blueskydehneepos.getString('company_name');
       String? billingaddress = blueskydehneepos.getString('billing_address');
       String? phoneno = blueskydehneepos.getString('genral_phno');
-      String? default_customer_id =
+      String? defaultCustomerId =
           blueskydehneepos.getString('default_customer_id');
-      String? trn_no = blueskydehneepos.getString('trn_no');
+      String? trnNo = blueskydehneepos.getString('trn_no');
       String? branchlink = blueskydehneepos.getString('branchlink');
-      String? warehouse_id = blueskydehneepos.getString("warehouse_id");
-      String? master_company_id =
-          blueskydehneepos.getString("master_company_id");
+      String? warehouseId = blueskydehneepos.getString("warehouse_id");
+      String? masterCompanyId = blueskydehneepos.getString("master_company_id");
 
       return {
         'status': 'success',
@@ -1179,11 +1185,11 @@ class API {
         'company_name': companyname,
         'billing_address': billingaddress,
         'genral_phno': phoneno,
-        'default_customer_id': default_customer_id,
-        'trn_no': trn_no,
+        'default_customer_id': defaultCustomerId,
+        'trn_no': trnNo,
         'branchlink': branchlink,
-        "warehouse_id": warehouse_id,
-        "master_company_id": master_company_id
+        "warehouse_id": warehouseId,
+        "master_company_id": masterCompanyId
       };
     } else {
       return {'status': 'failed', 'message': 'User not available'};
@@ -1944,8 +1950,8 @@ class API {
       String totalvat,
       String grandtotal,
       String customeraddress,
-      String cashcard_cash,
-      String cashcard_card,
+      String cashcardCash,
+      String cashcardCard,
       String time,
       String invoiceid,
       dynamic rowimage,
@@ -2359,10 +2365,10 @@ class API {
         PosColumn(
             text: receipttype == "CC"
                 ? "CASH : " +
-                    double.parse(cashcard_cash == "" ? "0.00" : cashcard_cash)
+                    double.parse(cashcardCash == "" ? "0.00" : cashcardCash)
                         .toStringAsFixed(2) +
                     " CARD : " +
-                    double.parse(cashcard_card == "" ? "0.00" : cashcard_card)
+                    double.parse(cashcardCard == "" ? "0.00" : cashcardCard)
                         .toStringAsFixed(2) +
                     ""
                 : "",
