@@ -10,6 +10,7 @@ import 'package:flutter_pos_printer_platform/flutter_pos_printer_platform.dart';
 import 'package:http/http.dart';
 import 'package:image/image.dart' as im;
 
+import '../cart/cart.dart';
 import '../models/printermodel.dart';
 
 class OrderListApi {
@@ -24,7 +25,7 @@ class OrderListApi {
     String baseurl = API.baseurl;
     print(token);
     String url =
-        '${baseurl}apiorder/getlist&invoice_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}&type=$receiptType&customer_location_id=$customerLocationId';
+        '${baseurl}apiorder/getlist&order_date=${date}&sales_man_id=${salesmanid}&warehouse_id=${locationid}&term=${term}&type=$receiptType&customer_location_id=$customerLocationId';
     print(url);
     final response = await get(
       Uri.parse(url),
@@ -69,10 +70,10 @@ class OrderListApi {
       Map<String, dynamic> footerDeatils) async {
     try {
       final imageHeadingBytes = await API.generateHeadingImageFromString(
-        "فاتورة ",
+        "طلب المبيعات",
       );
       final imageBytes = await API.generateImageFromString(
-        "رقم الفاتورة",
+        "رقم الأمر",
       );
       final imageSubTotalBytes = await API.generateImageFromString(
         "المبلغ الاجمالي",
@@ -94,6 +95,9 @@ class OrderListApi {
       );
       final imageAddressBytes = await API.generateImageFromString(
         "عنوان",
+      );
+      final imageRoundOff = await API.generateImageFromString(
+        "نهاية الجولة",
       );
       final imageDiscountBytes = await API.generateImageFromString("تخفيض");
       final imageTotalwoVatBytes =
@@ -148,18 +152,18 @@ class OrderListApi {
             styles: PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
-      bytes += printer.image(im.decodeImage(imageOutletBytes)!,
-          align: PosAlign.left);
-      bytes += printer.row([
-        PosColumn(
-            text: "Outlet",
-            styles: PosStyles(bold: true, align: PosAlign.left),
-            width: 3),
-        PosColumn(
-            text: ": $outletname",
-            styles: PosStyles(bold: true, align: PosAlign.left),
-            width: 9)
-      ]);
+      // bytes += printer.image(im.decodeImage(imageOutletBytes)!,
+      //     align: PosAlign.left);
+      // bytes += printer.row([
+      //   PosColumn(
+      //       text: "Outlet",
+      //       styles: PosStyles(bold: true, align: PosAlign.left),
+      //       width: 3),
+      //   PosColumn(
+      //       text: ": $outletname",
+      //       styles: PosStyles(bold: true, align: PosAlign.left),
+      //       width: 9)
+      // ]);
       bytes += printer.image(im.decodeImage(imageSalesmanBytes)!,
           align: PosAlign.left);
       bytes += printer.row([
@@ -270,18 +274,20 @@ class OrderListApi {
           PosColumn(
               text: itemslist[i]["rate"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["rate"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["rate"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.left),
               width: 2),
           PosColumn(
               text: itemslist[i]["quantity"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["quantity"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["quantity"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.left),
               width: 2),
           PosColumn(
-              text: (double.parse(itemslist[i]["rate"]) *
-                      double.parse(itemslist[i]["quantity"]))
+              text: (SimpleConvert.safeDouble(itemslist[i]["rate"]) *
+                      SimpleConvert.safeDouble(itemslist[i]["quantity"]))
                   .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.right),
               width: 2),
@@ -302,10 +308,7 @@ class OrderListApi {
           width: 2,
         ),
         PosColumn(
-            text: double.parse(footerDeatils["sub_total"].toString() == ""
-                    ? "0.00"
-                    : footerDeatils["sub_total"].toString())
-                .toStringAsFixed(2),
+            text: footerDeatils["sub_total"].toString(),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
@@ -329,16 +332,37 @@ class OrderListApi {
         PosColumn(
             text: discount == ""
                 ? ""
-                : double.parse(discount.toString() == ""
+                : SimpleConvert.safeDouble(discount.toString() == ""
                         ? "0.00"
                         : discount.toString())
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
-      bytes += printer.image(im.decodeImage(imageTotalwoVatBytes)!,
-          align: PosAlign.left);
+      bytes +=
+          printer.image(im.decodeImage(imageRoundOff)!, align: PosAlign.left);
       bytes += printer.hr();
+      String round_off = footerDeatils["round_off"].toString();
+      bytes += printer.row([
+        PosColumn(
+          text: "Round Off",
+          styles: PosStyles(bold: true, align: PosAlign.left),
+          width: 4,
+        ),
+        PosColumn(
+          text: ":",
+          styles: PosStyles(bold: true, align: PosAlign.right),
+          width: 2,
+        ),
+        PosColumn(
+            text: round_off == ""
+                ? ""
+                : SimpleConvert.safeDouble(round_off.toString())
+                    .toStringAsFixed(2),
+            styles: PosStyles(bold: true, align: PosAlign.right),
+            width: 6),
+      ]);
+
       bytes += printer.image(im.decodeImage(imageGrandTotalBytes)!,
           align: PosAlign.left);
 
@@ -356,7 +380,8 @@ class OrderListApi {
         PosColumn(
             text: grandtotal == ""
                 ? ""
-                : double.parse(grandtotal.toString()).toStringAsFixed(2),
+                : SimpleConvert.safeDouble(grandtotal.toString())
+                    .toStringAsFixed(2),
             styles: PosStyles(bold: true, align: PosAlign.right),
             width: 6),
       ]);

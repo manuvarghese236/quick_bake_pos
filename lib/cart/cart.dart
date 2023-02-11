@@ -10,7 +10,7 @@ class SimpleConvert {
     } else {
       String sanitizeNum = number.replaceAll(",", "");
       double? doubleNum = double.tryParse(sanitizeNum);
-      return (doubleNum == null) ? 0.0 : doubleNum;
+      return (doubleNum == null || doubleNum.isNaN) ? 0.0 : doubleNum;
     }
   }
 }
@@ -53,7 +53,7 @@ class CartModel extends Model {
       // running line total
       _total_amount += eachtotal;
       element.totalAmount = eachtotal;
-      double tax_code = double.parse(element.tax_code) / 100;
+      double tax_code = SimpleConvert.safeDouble(element.tax_code) / 100;
       double afterDiscountedAmount = eachtotal - discount_amt;
 
       double vat_amount = (afterDiscountedAmount * tax_code) / (1 + tax_code);
@@ -66,6 +66,9 @@ class CartModel extends Model {
       element.discountpercentagevalue = element.discount_percentage;
     });
     footer_discount_Pecentage = (footer_discount * 100) / _total_amount;
+    if (footer_discount_Pecentage.isNaN) {
+      footer_discount_Pecentage = 0;
+    }
   }
 
   void calculateDiscountFromFooterDiscount() {
@@ -74,13 +77,14 @@ class CartModel extends Model {
 
     double itemTotal = 0;
     cart.forEach((element) {
-      double rate = double.parse(element.rate);
+      double rate = SimpleConvert.safeDouble(element.rate);
 
-      itemTotal += double.parse(element.quantity) * rate;
+      itemTotal += SimpleConvert.safeDouble(element.quantity) * rate;
     });
     if (footer_discount_text.contains("%")) {
       isPercentage = true;
-      _percentage = double.parse(footer_discount_text.replaceAll("%", ""));
+      _percentage =
+          SimpleConvert.safeDouble(footer_discount_text.replaceAll("%", ""));
       if (_percentage != null) {
         footer_discount = itemTotal * _percentage / 100;
       }
@@ -91,13 +95,16 @@ class CartModel extends Model {
       }
     }
     cart.forEach((element) {
-      double rate = double.parse(element.rate);
-      double eachtotal = double.parse(element.quantity) * rate;
+      double rate = SimpleConvert.safeDouble(element.rate);
+      double eachtotal = SimpleConvert.safeDouble(element.quantity) * rate;
       element.totalAmount = eachtotal;
 
       double discount_amt = (eachtotal / itemTotal) * footer_discount;
+      if (discount_amt.isNaN) {
+        discount_amt = 0;
+      }
       element.discountvalue = discount_amt;
-      double tax_code = double.parse(element.tax_code) / 100;
+      double tax_code = SimpleConvert.safeDouble(element.tax_code) / 100;
       double afterDiscountedAmount = eachtotal - discount_amt;
 
       double vat_amount = (afterDiscountedAmount * tax_code) / (1 + tax_code);
@@ -106,20 +113,24 @@ class CartModel extends Model {
       element.subtotalafterdiscount = (afterDiscountedAmount - vat_amount);
       element.totalafterdiscount = afterDiscountedAmount;
 
-      double discount_percentage = (discount_amt * 100) / eachtotal;
+      double discount_percentage =
+          (eachtotal == 0) ? 0 : (discount_amt * 100) / eachtotal;
       element.discount_percentage = discount_percentage;
       element.discountpercentagevalue = discount_percentage;
     });
     double _total_amount = getMaxDiscount();
     footer_discount_Pecentage = (footer_discount * 100) / _total_amount;
+    if (footer_discount_Pecentage.isNaN) {
+      footer_discount_Pecentage = 0;
+    }
   }
 
   double getMaxDiscount() {
     double itemTotal = 0;
     cart.forEach((element) {
-      double rate = double.parse(element.rate);
+      double rate = SimpleConvert.safeDouble(element.rate);
 
-      itemTotal += double.parse(element.quantity) * rate;
+      itemTotal += SimpleConvert.safeDouble(element.quantity) * rate;
     });
     return itemTotal;
   }
@@ -135,21 +146,25 @@ class CartModel extends Model {
     subTotal = 0;
     totaldiscount = 0;
     net_total_before_round_off = 0;
-    footer_discount = 0;
+    footer_discount = 0.0;
     cart.forEach((cal) {
-      totaldiscount += double.parse(cal.discountvalue.toString());
+      totaldiscount += SimpleConvert.safeDouble(cal.discountvalue.toString());
 
-      double rate = double.parse(cal.rate);
-      double eachtotal = double.parse(cal.quantity) * rate;
+      double rate = SimpleConvert.safeDouble(cal.rate);
+      double eachtotal = SimpleConvert.safeDouble(cal.quantity) * rate;
 
       net_total_before_round_off += eachtotal;
 
-      total_with_out_vat += double.parse(cal.subtotalafterdiscount.toString());
+      total_with_out_vat +=
+          SimpleConvert.safeDouble(cal.subtotalafterdiscount.toString());
 
       subTotal += eachtotal;
       totalvat += cal.vatafterdiscount;
-      footer_discount += cal.discountvalue;
+      footer_discount += SimpleConvert.safeDouble(cal.discountvalue.toString());
     });
+    if (footer_discount.isNaN) {
+      footer_discount = 0;
+    }
     net_total_before_round_off = subTotal - footer_discount;
     roundOff();
     notifyListeners();
@@ -194,23 +209,36 @@ class CartModel extends Model {
   }
 
   bool hasQtyInStock(String productid, List<ItemSchema> cartlist, String Qty,
-      String totalQty) {
+      String totalQty, String inventory_item_type) {
     double _qtyDouble = SimpleConvert.safeDouble(Qty);
     double _totalQty = SimpleConvert.safeDouble(totalQty);
     double _currenCartQty = 0;
     bool status = true;
-    for (var e in cartlist) {
-      print(e.id);
-      if (e.id == productid) {
-        _currenCartQty = SimpleConvert.safeDouble(e.quantity);
+    if (inventory_item_type == "1") {
+      // 1 for stock item
+      for (var e in cartlist) {
+        print(e.id);
+        if (e.id == productid) {
+          _currenCartQty = SimpleConvert.safeDouble(e.quantity);
+        }
       }
+      return (_qtyDouble <= (_totalQty - _currenCartQty));
+    } else {
+      return true;
     }
-    return (_qtyDouble <= (_totalQty - _currenCartQty));
   }
 
   void roundOff() {
-    double multiplier = 0.50;
-    net_total = (net_total_before_round_off + multiplier).toInt().toDouble();
-    round_off_amount = net_total_before_round_off - net_total;
+    try {
+      double multiplier = 0.50;
+      if (net_total_before_round_off.isNaN) {
+        net_total_before_round_off = 0;
+      }
+      net_total = (net_total_before_round_off + multiplier).toInt().toDouble();
+      round_off_amount = net_total - net_total_before_round_off;
+    } on Exception catch (e) {
+      round_off_amount = 0;
+      net_total = net_total_before_round_off;
+    }
   }
 }

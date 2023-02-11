@@ -15,6 +15,7 @@ import 'package:windowspos/api/api.dart';
 import 'package:windowspos/cart/cart.dart';
 import 'package:windowspos/frontend/dashboard.dart';
 import 'package:windowspos/frontend/successpage.dart';
+import 'package:windowspos/loading_screen.dart';
 import 'package:windowspos/models/delivery_status.dart';
 import 'package:windowspos/models/locationmodel.dart';
 import 'package:windowspos/models/printermodel.dart';
@@ -1029,12 +1030,7 @@ class _ReceiptsState extends State<Receipts> {
               color: API.bordercolor,
             ),
             loading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: API.tilecolor,
-                      strokeWidth: 1,
-                    ),
-                  )
+                ? const LoadingScreen()
                 : Expanded(
                     child: Row(
                       children: [
@@ -1767,6 +1763,11 @@ class _ReceiptsState extends State<Receipts> {
                                                                     "emirates":
                                                                         selectedreceipt![
                                                                             "emirates"],
+                                                                    "round_off": (selectedreceipt!["round_off"] ==
+                                                                            null)
+                                                                        ? "0"
+                                                                        : selectedreceipt![
+                                                                            "round_off"]
                                                                   });
                                                             }
                                                             setState(() {

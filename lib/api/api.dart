@@ -15,6 +15,7 @@ import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:http/http.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:windowspos/cart/cart.dart';
 import 'package:windowspos/models/brandmodel.dart';
 import 'package:windowspos/models/customermodel.dart';
 import 'package:windowspos/models/itemmodel.dart';
@@ -35,9 +36,10 @@ class API {
   static Color tilecolor = Color(0xFF451a00);
   static Color tilewhite = Colors.white;
 
-  static String APP_VER = "1.0.1";
-  static String baseurl = "http://bluesky01.com/quickbake/index.php?r=";
-  static String imgurl = "http://bluesky01.com/quickbake/";
+  static String APP_VER = "1.0.1.17";
+  static String CODE = "QUICKBAKE";
+  static String baseurl = "http://pos.cumuluserp.me/quickbake/index.php?r=";
+  static String imgurl = "http://pos.cumuluserp.me/quickbake/";
 
   static String DISPLAY_TYPE_STOCK_PROUDCT = "1";
   static String DISPLAY_TYPE_ALL_PROUDCT = "2";
@@ -48,6 +50,13 @@ class API {
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.7);
+  }
+
+  static getInfo() {
+    var uri = Uri.parse(baseurl);
+    String title =
+        "${uri.host}${uri.path.replaceAll("/index.php", "")} Ver : $CODE $APP_VER";
+    return title;
   }
 
   static generatePDF(
@@ -336,7 +345,8 @@ class API {
                                 height: 11,
                                 // color: PdfColors.green,
                                 child: pw.Text(
-                                    double.parse(itemslist[i]["rate"])
+                                    SimpleConvert.safeDouble(
+                                            itemslist[i]["rate"])
                                         .toStringAsFixed(2),
                                     style: pw.TextStyle(
                                         color: PdfColors.black,
@@ -349,7 +359,8 @@ class API {
                                 height: 11,
                                 // color: PdfColors.green,
                                 child: pw.Text(
-                                    double.parse(itemslist[i]["quantity"])
+                                    SimpleConvert.safeDouble(
+                                            itemslist[i]["quantity"])
                                         .toStringAsFixed(2),
                                     style: pw.TextStyle(
                                         color: PdfColors.black,
@@ -373,7 +384,8 @@ class API {
                                 height: 11,
                                 // color: PdfColors.green,
                                 child: pw.Text(
-                                    double.parse(itemslist[i]["total_amount"])
+                                    SimpleConvert.safeDouble(
+                                            itemslist[i]["total_amount"])
                                         .toStringAsFixed(2),
                                     style: pw.TextStyle(
                                         color: PdfColors.black,
@@ -416,7 +428,8 @@ class API {
                   width: PdfPageFormat.cm * 4,
                   // color: PdfColors.green,
                   child: pw.Text(
-                      double.parse(totalamount.toString()).toStringAsFixed(2),
+                      SimpleConvert.safeDouble(totalamount.toString())
+                          .toStringAsFixed(2),
                       textAlign: pw.TextAlign.right,
                       style: pw.TextStyle(
                           color: PdfColors.black,
@@ -449,7 +462,8 @@ class API {
                   // color: PdfColors.green,
 
                   child: pw.Text(
-                      double.parse(vat.toString()).toStringAsFixed(2),
+                      SimpleConvert.safeDouble(vat.toString())
+                          .toStringAsFixed(2),
                       textAlign: pw.TextAlign.right,
                       style: pw.TextStyle(
                           color: PdfColors.black,
@@ -485,7 +499,8 @@ class API {
                   width: PdfPageFormat.cm * 4,
                   // color: PdfColors.green,
                   child: pw.Text(
-                      double.parse(grandtotal.toString()).toStringAsFixed(2),
+                      SimpleConvert.safeDouble(grandtotal.toString())
+                          .toStringAsFixed(2),
                       textAlign: pw.TextAlign.right,
                       style: pw.TextStyle(
                           color: PdfColors.black,
@@ -736,21 +751,25 @@ class API {
       "received_amount": receivedamount,
       "authorization_code": authorizationcode
     }));
-    final response = await post(
-        Uri.parse('${baseurl}apiinvoice/updateinvoicereceivedamount'),
-        headers: {"Accept": "application/json", "token": token},
-        body: json.encode({
-          "invoice_id": invoiceid,
-          "receipt_type": receipttype,
-          "received_amount": receivedamount,
-          "authorization_code": authorizationcode
-        }));
-    if (response.statusCode == 200) {
-      dynamic updateinvoicerresponse = jsonDecode(response.body);
-      print(updateinvoicerresponse);
-      return updateinvoicerresponse;
-    } else {
-      return {'status': 'failed', 'msg': response.reasonPhrase.toString()};
+    try {
+      final response = await post(
+          Uri.parse('${baseurl}apiinvoice/updateinvoicereceivedamount'),
+          headers: {"Accept": "application/json", "token": token},
+          body: json.encode({
+            "invoice_id": invoiceid,
+            "receipt_type": receipttype,
+            "received_amount": receivedamount,
+            "authorization_code": authorizationcode
+          }));
+      if (response.statusCode == 200) {
+        dynamic updateinvoicerresponse = jsonDecode(response.body);
+        print(updateinvoicerresponse);
+        return updateinvoicerresponse;
+      } else {
+        return {'status': 'failed', 'msg': response.reasonPhrase.toString()};
+      }
+    } on Exception catch (e) {
+      return {'status': 'failed', 'msg': e.toString()};
     }
   }
 
@@ -931,6 +950,7 @@ class API {
         body: json
             .encode({"code": code, "username": username, "password": password}),
       );
+      print(response.body);
       if (response.statusCode == 200) {
         dynamic loginresponse = jsonDecode(response.body);
         print(loginresponse);
@@ -1225,9 +1245,11 @@ class API {
         "discount_amount": data[i].discountvalue,
         "discount_percentage": data[i].discount_percentage,
         "grand_total": data[i].totalafterdiscount,
-        "tax_vat_amount": double.parse(data[i].vatafterdiscount.toString()),
-        "net_per_item": double.parse(data[i].totalafterdiscount.toString()) /
-            double.parse(data[i].quantity.toString()),
+        "tax_vat_amount":
+            SimpleConvert.safeDouble(data[i].vatafterdiscount.toString()),
+        "net_per_item":
+            SimpleConvert.safeDouble(data[i].totalafterdiscount.toString()) /
+                SimpleConvert.safeDouble(data[i].quantity.toString()),
       };
       print("This is the data inside cart send to backend");
       print(eachresult);
@@ -1398,13 +1420,13 @@ class API {
   //           PosColumn(
   //               text: itemslist[i]["rate"] == ""
   //                   ? ""
-  //                   : double.parse(itemslist[i]["rate"]).toStringAsFixed(2),
+  //                   : SimpleConvert.safeDouble(itemslist[i]["rate"]).toStringAsFixed(2),
   //               styles: PosStyles(bold: false),
   //               width: 2),
   //           PosColumn(
   //               text: itemslist[i]["quantity"] == ""
   //                   ? ""
-  //                   : double.parse(itemslist[i]["quantity"]).toStringAsFixed(2),
+  //                   : SimpleConvert.safeDouble(itemslist[i]["quantity"]).toStringAsFixed(2),
   //               styles: PosStyles(bold: false),
   //               width: 2),
   //           PosColumn(
@@ -1414,7 +1436,7 @@ class API {
   //           PosColumn(
   //               text: itemslist[i]["total_amount"] == ""
   //                   ? ""
-  //                   : double.parse(itemslist[i]["total_amount"])
+  //                   : SimpleConvert.safeDouble(itemslist[i]["total_amount"])
   //                       .toStringAsFixed(2),
   //               styles: PosStyles(bold: false),
   //               width: 2),
@@ -1435,7 +1457,7 @@ class API {
   //         PosColumn(
   //             text: totalamount == ""
   //                 ? ""
-  //                 : double.parse(totalamount.toString()).toStringAsFixed(2),
+  //                 : SimpleConvert.safeDouble(totalamount.toString()).toStringAsFixed(2),
   //             styles: PosStyles(bold: false, align: PosAlign.right),
   //             width: 6),
   //       ]);
@@ -1453,7 +1475,7 @@ class API {
   //         PosColumn(
   //             text: vat == ""
   //                 ? ""
-  //                 : double.parse(vat.toString()).toStringAsFixed(2),
+  //                 : SimpleConvert.safeDouble(vat.toString()).toStringAsFixed(2),
   //             styles: PosStyles(bold: false, align: PosAlign.right),
   //             width: 6),
   //       ]);
@@ -1472,7 +1494,7 @@ class API {
   //         PosColumn(
   //             text: grandtotal == ""
   //                 ? ""
-  //                 : double.parse(grandtotal.toString()).toStringAsFixed(2),
+  //                 : SimpleConvert.safeDouble(grandtotal.toString()).toStringAsFixed(2),
   //             styles: PosStyles(bold: true, align: PosAlign.right),
   //             width: 6),
   //       ]);
@@ -1496,7 +1518,7 @@ class API {
   //         PosColumn(
   //             text: ": " + receivedamount == ""
   //                 ? ""
-  //                 : double.parse(receivedamount.toString()).toStringAsFixed(2),
+  //                 : SimpleConvert.safeDouble(receivedamount.toString()).toStringAsFixed(2),
   //             styles: PosStyles(bold: true, align: PosAlign.left),
   //             width: 7)
   //       ]);
@@ -1531,16 +1553,19 @@ class API {
         "rate": data["items"][i]["rate"],
         "quantity": data["items"][i]["quantity"],
         "unit_name": data["items"][i]["unit_name"],
-        "total_amount": double.parse((double.parse(data["items"][i]["rate"]) *
-                    double.parse(data["items"][i]["quantity"]))
-                .toString())
+        "total_amount": SimpleConvert.safeDouble(
+                (SimpleConvert.safeDouble(data["items"][i]["rate"]) *
+                        SimpleConvert.safeDouble(data["items"][i]["quantity"]))
+                    .toString())
             .toStringAsFixed(2)
       };
-      subtotal += double.parse((double.parse(data["items"][i]["rate"]) *
-              double.parse(data["items"][i]["quantity"]))
-          .toString());
-      discount += double.parse(data["items"][i]["discount"].toString()) *
-          double.parse(data["items"][i]["quantity"]);
+      subtotal += SimpleConvert.safeDouble(
+          (SimpleConvert.safeDouble(data["items"][i]["rate"]) *
+                  SimpleConvert.safeDouble(data["items"][i]["quantity"]))
+              .toString());
+      discount +=
+          SimpleConvert.safeDouble(data["items"][i]["discount"].toString()) *
+              SimpleConvert.safeDouble(data["items"][i]["quantity"]);
       items.add(datadetails);
     }
     num grandtotal = subtotal - discount;
@@ -1680,13 +1705,15 @@ class API {
           PosColumn(
               text: itemslist[i]["rate"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["rate"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["rate"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false),
               width: 2),
           PosColumn(
               text: itemslist[i]["quantity"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["quantity"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["quantity"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false),
               width: 2),
           PosColumn(
@@ -1696,7 +1723,7 @@ class API {
           PosColumn(
               text: itemslist[i]["total_amount"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["total_amount"])
+                  : SimpleConvert.safeDouble(itemslist[i]["total_amount"])
                       .toStringAsFixed(2),
               styles: PosStyles(bold: false),
               width: 2),
@@ -1717,7 +1744,7 @@ class API {
         PosColumn(
             text: totalamount == ""
                 ? ""
-                : double.parse(totalamount.toString() == ""
+                : SimpleConvert.safeDouble(totalamount.toString() == ""
                         ? "0.00"
                         : totalamount.toString())
                     .toStringAsFixed(2),
@@ -1738,7 +1765,7 @@ class API {
         PosColumn(
             text: discount == ""
                 ? ""
-                : double.parse(discount.toString() == ""
+                : SimpleConvert.safeDouble(discount.toString() == ""
                         ? "0.00"
                         : discount.toString())
                     .toStringAsFixed(2),
@@ -1760,7 +1787,7 @@ class API {
         PosColumn(
             text: amountwithoutvat == ""
                 ? ""
-                : double.parse(amountwithoutvat.toString() == ""
+                : SimpleConvert.safeDouble(amountwithoutvat.toString() == ""
                         ? "0.00"
                         : amountwithoutvat.toString())
                     .toStringAsFixed(2),
@@ -1781,7 +1808,7 @@ class API {
         PosColumn(
             text: vat == ""
                 ? ""
-                : double.parse(vat.toString() == "" ? "0.00" : vat.toString())
+                : SimpleConvert.safeDouble(vat.toString() == "" ? "0.00" : vat.toString())
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
@@ -1801,7 +1828,8 @@ class API {
         PosColumn(
             text: grandtotal == ""
                 ? ""
-                : double.parse(grandtotal.toString()).toStringAsFixed(2),
+                : SimpleConvert.safeDouble(grandtotal.toString())
+                    .toStringAsFixed(2),
             styles: PosStyles(bold: true, align: PosAlign.right),
             width: 6),
       ]);
@@ -1829,7 +1857,7 @@ class API {
         PosColumn(
             text: ": " + receivedamount == ""
                 ? ""
-                : double.parse(receivedamount.toString() == ""
+                : SimpleConvert.safeDouble(receivedamount.toString() == ""
                         ? "0.00"
                         : receivedamount.toString())
                     .toStringAsFixed(2),
@@ -1983,6 +2011,9 @@ class API {
       );
       final imageAddressBytes = await generateImageFromString(
         "عنوان",
+      );
+      final imageRoundOff = await API.generateImageFromString(
+        "نهاية الجولة",
       );
       final imageDiscountBytes = await generateImageFromString("تخفيض");
       final imageTotalwoVatBytes =
@@ -2185,13 +2216,15 @@ class API {
           PosColumn(
               text: itemslist[i]["rate"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["rate"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["rate"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.left),
               width: 2),
           PosColumn(
               text: itemslist[i]["quantity"] == ""
                   ? ""
-                  : double.parse(itemslist[i]["quantity"]).toStringAsFixed(2),
+                  : SimpleConvert.safeDouble(itemslist[i]["quantity"])
+                      .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.left),
               width: 2),
           // PosColumn(
@@ -2199,8 +2232,8 @@ class API {
           //     styles: PosStyles(bold: false),
           //     width: 1),
           PosColumn(
-              text: (double.parse(itemslist[i]["rate"]) *
-                      double.parse(itemslist[i]["quantity"]))
+              text: (SimpleConvert.safeDouble(itemslist[i]["rate"]) *
+                      SimpleConvert.safeDouble(itemslist[i]["quantity"]))
                   .toStringAsFixed(2),
               styles: PosStyles(bold: false, align: PosAlign.right),
               width: 2),
@@ -2221,10 +2254,7 @@ class API {
           width: 2,
         ),
         PosColumn(
-            text: double.parse(footerDeatils["sub_total"].toString() == ""
-                    ? "0.00"
-                    : footerDeatils["sub_total"].toString())
-                .toStringAsFixed(2),
+            text: footerDeatils["sub_total"].toString(),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
@@ -2248,7 +2278,7 @@ class API {
         PosColumn(
             text: discount == ""
                 ? ""
-                : double.parse(discount.toString() == ""
+                : SimpleConvert.safeDouble(discount.toString() == ""
                         ? "0.00"
                         : discount.toString())
                     .toStringAsFixed(2),
@@ -2272,7 +2302,7 @@ class API {
         PosColumn(
             text: totalwithoutvat == ""
                 ? ""
-                : double.parse(totalwithoutvat.toString() == ""
+                : SimpleConvert.safeDouble(totalwithoutvat.toString() == ""
                         ? "0.00"
                         : totalwithoutvat.toString())
                     .toStringAsFixed(2),
@@ -2295,13 +2325,37 @@ class API {
         PosColumn(
             text: totalvat == ""
                 ? ""
-                : double.parse(totalvat.toString() == ""
+                : SimpleConvert.safeDouble(totalvat.toString() == ""
                         ? "0.00"
                         : totalvat.toString())
                     .toStringAsFixed(2),
             styles: PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);*/
+
+      bytes +=
+          printer.image(im.decodeImage(imageRoundOff)!, align: PosAlign.left);
+      bytes += printer.hr();
+      String round_off = footerDeatils["round_off"].toString();
+      bytes += printer.row([
+        PosColumn(
+          text: "Round Off",
+          styles: PosStyles(bold: true, align: PosAlign.left),
+          width: 4,
+        ),
+        PosColumn(
+          text: ":",
+          styles: PosStyles(bold: true, align: PosAlign.right),
+          width: 2,
+        ),
+        PosColumn(
+            text: round_off == ""
+                ? ""
+                : SimpleConvert.safeDouble(round_off.toString())
+                    .toStringAsFixed(2),
+            styles: PosStyles(bold: true, align: PosAlign.right),
+            width: 6),
+      ]);
       bytes += printer.hr();
       bytes += printer.image(im.decodeImage(imageGrandTotalBytes)!,
           align: PosAlign.left);
@@ -2320,7 +2374,8 @@ class API {
         PosColumn(
             text: grandtotal == ""
                 ? ""
-                : double.parse(grandtotal.toString()).toStringAsFixed(2),
+                : SimpleConvert.safeDouble(grandtotal.toString())
+                    .toStringAsFixed(2),
             styles: PosStyles(bold: true, align: PosAlign.right),
             width: 6),
       ]);
@@ -2354,7 +2409,7 @@ class API {
             width: 5),
         PosColumn(
             text: ": " +
-                double.parse(receivedamount.toString() == ""
+                SimpleConvert.safeDouble(receivedamount.toString() == ""
                         ? "0.00"
                         : receivedamount.toString())
                     .toStringAsFixed(2),
@@ -2365,10 +2420,12 @@ class API {
         PosColumn(
             text: receipttype == "CC"
                 ? "CASH : " +
-                    double.parse(cashcardCash == "" ? "0.00" : cashcardCash)
+                    SimpleConvert.safeDouble(
+                            cashcardCash == "" ? "0.00" : cashcardCash)
                         .toStringAsFixed(2) +
                     " CARD : " +
-                    double.parse(cashcardCard == "" ? "0.00" : cashcardCard)
+                    SimpleConvert.safeDouble(
+                            cashcardCard == "" ? "0.00" : cashcardCard)
                         .toStringAsFixed(2) +
                     ""
                 : "",

@@ -3,6 +3,7 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:windowspos/api/api.dart';
+import 'package:windowspos/loading_screen.dart';
 import 'package:windowspos/models/brandmodel.dart';
 import 'package:windowspos/models/locationmodel.dart';
 
@@ -69,12 +70,7 @@ class _StocksListState extends State<StocksList> {
         ),
       ),
       body: load
-          ? Center(
-              child: CircularProgressIndicator(
-                color: API.tilecolor,
-                strokeWidth: 1,
-              ),
-            )
+          ? LoadingScreen()
           : Container(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

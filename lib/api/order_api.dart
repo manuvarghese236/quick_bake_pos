@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart';
 import 'package:windowspos/api/api.dart';
 
+import '../cart/cart.dart';
 import '../models/itemmodel.dart';
 
 class ApiOrder {
@@ -74,9 +75,11 @@ class ApiOrder {
         "discount_amount": data[i].discountvalue,
         "discount_percentage": data[i].discount_percentage,
         "grand_total": data[i].totalafterdiscount,
-        "tax_vat_amount": double.parse(data[i].vatafterdiscount.toString()),
-        "net_per_item": double.parse(data[i].totalafterdiscount.toString()) /
-            double.parse(data[i].quantity.toString()),
+        "tax_vat_amount":
+            SimpleConvert.safeDouble(data[i].vatafterdiscount.toString()),
+        "net_per_item":
+            SimpleConvert.safeDouble(data[i].totalafterdiscount.toString()) /
+                SimpleConvert.safeDouble(data[i].quantity.toString()),
       };
       print("This is the data inside order cart send to backend");
       print(eachresult);

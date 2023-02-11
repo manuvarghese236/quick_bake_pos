@@ -7,6 +7,7 @@ class ItemSchema {
   final String brandid;
   final String brandname;
   final String rate;
+  final String inventory_item_type;
   String quantity;
   final String warehouseid;
   final String unit_name;
@@ -50,7 +51,8 @@ class ItemSchema {
       required this.totalafterdiscount,
       required this.vatafterdiscount,
       required this.subtotalafterdiscount,
-      required this.barcode});
+      required this.barcode,
+      required this.inventory_item_type});
 
   static ItemSchema fromJson(Map<String, dynamic> json) => ItemSchema(
       id: json['id'],
@@ -78,5 +80,6 @@ class ItemSchema {
           SimpleConvert.safeDouble(json["vatafterdiscount"].toString()),
       subtotalafterdiscount:
           SimpleConvert.safeDouble(json["subtotalafterdiscount"].toString()),
+      inventory_item_type: json["inventory_item_type"].toString(),
       barcode: json["bar_code"].toString());
 }

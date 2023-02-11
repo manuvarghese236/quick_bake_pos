@@ -10,6 +10,7 @@ import 'package:windowspos/api/api.dart';
 import 'package:windowspos/frontend/dashboard.dart';
 import 'package:windowspos/frontend/homepage.dart';
 import 'package:windowspos/frontend/successpage.dart';
+import 'package:windowspos/loading_screen.dart';
 
 import '../models/contact.dart';
 
@@ -182,9 +183,7 @@ class _AddCustomerState extends State<AddCustomer> {
         ],
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const LoadingScreen()
           : SingleChildScrollView(
               child: Container(
                 height: MediaQuery.of(context).size.height,

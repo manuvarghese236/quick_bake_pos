@@ -22,6 +22,7 @@ D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/ima
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/logo2%20-%20Copy%20(2).png
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/logo2%20-%20Copy.png
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/logo2.png
+D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/logo2_old.png
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/man.png
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/old.png
 D:/flutter/quickbake/build/windows/runner/Release/data/flutter_assets/assets/images/pay.png

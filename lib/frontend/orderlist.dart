@@ -16,6 +16,7 @@ import 'package:windowspos/api/order_list.dart';
 import 'package:windowspos/cart/cart.dart';
 import 'package:windowspos/frontend/dashboard.dart';
 import 'package:windowspos/frontend/successpage.dart';
+import 'package:windowspos/loading_screen.dart';
 import 'package:windowspos/models/delivery_status.dart';
 import 'package:windowspos/models/locationmodel.dart';
 import 'package:windowspos/models/printermodel.dart';
@@ -978,12 +979,7 @@ class _OrderListState extends State<OrderList> {
               color: API.bordercolor,
             ),
             loading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: API.tilecolor,
-                      strokeWidth: 1,
-                    ),
-                  )
+                ? const LoadingScreen()
                 : Expanded(
                     child: Row(
                       children: [
@@ -1029,7 +1025,7 @@ class _OrderListState extends State<OrderList> {
                                         textAlign: TextAlign.start,
                                         style: const TextStyle(
                                             color: Colors.black,
-                                            fontSize: 10,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                             fontFamily: 'Montserrat'),
                                       ),
@@ -1049,17 +1045,7 @@ class _OrderListState extends State<OrderList> {
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
                                                 fontFamily: 'Montserrat'),
-                                          ),
-                                          Text(
-                                            Orderlist[index]
-                                                    ["customer_location"]
-                                                .toString(),
-                                            textAlign: TextAlign.start,
-                                            style: const TextStyle(
-                                                color: Colors.grey,
-                                                fontSize: 10,
-                                                fontFamily: 'Montserrat'),
-                                          ),
+                                          )
                                         ],
                                       ),
                                       trailing: Container(
@@ -1634,16 +1620,21 @@ class _OrderListState extends State<OrderList> {
                                                                       "emirates":
                                                                           selectedreceipt![
                                                                               "emirates"],
+                                                                      "round_off": (selectedreceipt!["round_off"] ==
+                                                                              null)
+                                                                          ? "0"
+                                                                          : selectedreceipt![
+                                                                              "round_off"]
                                                                     }).then(
                                                                     (value) {
-                                                                  Get.snackbar(
-                                                                      "Error",
-                                                                      value);
+                                                                  // Get.snackbar(
+                                                                  //     "Error",
+                                                                  //     value);
                                                                 });
                                                               } catch (e) {
-                                                                Get.snackbar(
-                                                                    "Error",
-                                                                    e.toString());
+                                                                // Get.snackbar(
+                                                                //     "Error",
+                                                                //     e.toString());
                                                               }
                                                             }
                                                             setState(() {
@@ -1799,7 +1790,7 @@ class _OrderListState extends State<OrderList> {
                                                                 ),
                                                                 Text(
                                                                   selectedreceipt![
-                                                                          "Order_no"]
+                                                                          "id"]
                                                                       .toString(),
                                                                   textAlign:
                                                                       TextAlign
@@ -1885,124 +1876,6 @@ class _OrderListState extends State<OrderList> {
                                                                       fontFamily:
                                                                           'Montserrat'),
                                                                 ),
-                                                                const SizedBox(
-                                                                  height: 8,
-                                                                ),
-                                                                const Text(
-                                                                  "Receipt Type",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .start,
-                                                                  style: TextStyle(
-                                                                      color: Colors
-                                                                          .black,
-                                                                      fontSize:
-                                                                          12,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                      fontFamily:
-                                                                          'Montserrat'),
-                                                                ),
-                                                                Text(
-                                                                  getReceiptTypeName(
-                                                                      selectedreceipt![
-                                                                              "receipt_type"]
-                                                                          .toString()),
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .start,
-                                                                  style: const TextStyle(
-                                                                      color: Colors
-                                                                          .black,
-                                                                      fontSize:
-                                                                          15,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w400,
-                                                                      fontFamily:
-                                                                          'Montserrat'),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 8,
-                                                                ),
-                                                                const Text(
-                                                                  "Received Amount",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .start,
-                                                                  style: TextStyle(
-                                                                      color: Colors
-                                                                          .black,
-                                                                      fontSize:
-                                                                          12,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                      fontFamily:
-                                                                          'Montserrat'),
-                                                                ),
-                                                                Text(
-                                                                  selectedreceipt!["received_amount"]
-                                                                              .toString() ==
-                                                                          ""
-                                                                      ? "NA"
-                                                                      : SimpleConvert.safeDouble(selectedreceipt!["received_amount"]
-                                                                              .toString())
-                                                                          .toStringAsFixed(
-                                                                              2),
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .start,
-                                                                  style: const TextStyle(
-                                                                      color: Colors
-                                                                          .black,
-                                                                      fontSize:
-                                                                          15,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w400,
-                                                                      fontFamily:
-                                                                          'Montserrat'),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 8,
-                                                                ),
-                                                                selectedreceipt!["receipt_type"]
-                                                                            .toString() ==
-                                                                        "CH"
-                                                                    ? const SizedBox()
-                                                                    : const Text(
-                                                                        "Authorization Code",
-                                                                        textAlign:
-                                                                            TextAlign.start,
-                                                                        style: TextStyle(
-                                                                            color: Colors
-                                                                                .black,
-                                                                            fontSize:
-                                                                                12,
-                                                                            fontWeight:
-                                                                                FontWeight.w600,
-                                                                            fontFamily: 'Montserrat'),
-                                                                      ),
-                                                                selectedreceipt!["receipt_type"]
-                                                                            .toString() ==
-                                                                        "CH"
-                                                                    ? const SizedBox()
-                                                                    : Text(
-                                                                        selectedreceipt!["authorization_code"]
-                                                                            .toString(),
-                                                                        textAlign:
-                                                                            TextAlign.start,
-                                                                        style: const TextStyle(
-                                                                            color: Colors
-                                                                                .black,
-                                                                            fontSize:
-                                                                                15,
-                                                                            fontWeight:
-                                                                                FontWeight.w400,
-                                                                            fontFamily: 'Montserrat'),
-                                                                      ),
                                                               ],
                                                             )
                                                       /* : Column(

@@ -5,6 +5,8 @@ import 'package:route_transitions/route_transitions.dart';
 import 'package:windowspos/api/api.dart';
 import 'package:windowspos/frontend/dashboard.dart';
 
+import '../loading_screen.dart';
+
 class Login extends StatefulWidget {
   const Login({Key? key}) : super(key: key);
 
@@ -66,13 +68,7 @@ class _LoginState extends State<Login> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: load
-          ? Container(
-              child: Center(
-                  child: CircularProgressIndicator(
-                strokeWidth: 1,
-                color: Colors.red,
-              )),
-            )
+          ? const LoadingScreen()
           : Container(
               height: MediaQuery.of(context).size.height,
               width: MediaQuery.of(context).size.width,
@@ -289,10 +285,8 @@ class _LoginState extends State<Login> {
                                               });
                                               final dynamic userloginresponse =
                                                   //"DEHNEE"
-                                                  await API.loginAPI(
-                                                      "QUICKBAKE",
-                                                      username,
-                                                      password);
+                                                  await API.loginAPI(API.CODE,
+                                                      username, password);
                                               if (userloginresponse['status'] ==
                                                   'success') {
                                                 final dynamic prefresult = await API.addPrefferenceUserDetails(
@@ -415,9 +409,9 @@ class _LoginState extends State<Login> {
                                 ),
                               ),
                               Text(
-                                API.baseurl,
+                                API.getInfo(),
                                 style: const TextStyle(
-                                    fontSize: 11, color: Colors.grey),
+                                    fontSize: 12, color: Colors.grey),
                               )
                             ],
                           ),

@@ -13,6 +13,7 @@ import 'package:route_transitions/route_transitions.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:windowspos/api/api.dart';
+import 'package:windowspos/api/order_list.dart';
 import 'package:windowspos/cart/cart.dart';
 import 'package:windowspos/frontend/addcustomer.dart';
 import 'package:windowspos/frontend/dashboard.dart';
@@ -24,6 +25,7 @@ import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:windowspos/models/printermodel.dart';
 
 import '../api/order_api.dart';
+import '../loading_screen.dart';
 
 class NewOrder extends StatefulWidget {
   final int numberInvoiceCopy = 2;
@@ -46,6 +48,9 @@ class NewOrder extends StatefulWidget {
 class _NewOrderState extends State<NewOrder> {
   /// Allow negative Qty
   bool allowNegativeQty = true;
+
+  /// saving order
+  bool isLoading = false;
 
   /// TextEditingController
   TextEditingController receivedamountcontroller = TextEditingController();
@@ -248,15 +253,15 @@ class _NewOrderState extends State<NewOrder> {
 
   Future<Map<String, dynamic>> checkTotal(
       Map<String, dynamic> itemdetails) async {
-    num total = 0.00;
-    num totalafterdiscountpercentage = 0.00;
+    double total = 0.00;
+    double totalafterdiscountpercentage = 0.00;
     if (itemdetails["quantity"] == "" || itemdetails["quantity"] == null) {
       itemdetails["quantity"] = "0";
     }
     print("called checkTotal : Inside checking total before adding to cart");
     print(itemdetails);
 
-    num totalbeforediscount =
+    double totalbeforediscount =
         (SimpleConvert.safeDouble(itemdetails["rate"].toString()) *
             SimpleConvert.safeDouble(itemdetails["quantity"].toString()));
     print("The total after discount only");
@@ -334,13 +339,19 @@ class _NewOrderState extends State<NewOrder> {
   }
 
   addProducttoTable(CartModel model) async {
-    bool hasQtyInStock = model.hasQtyInStock(
-        itemdetails["id"],
-        model.cart,
-        itemdetails["quantity"].toString(),
-        itemdetails["available_qty"].toString());
-    if (allowNegativeQty || hasQtyInStock) {
-      ///
+    double rate = SimpleConvert.safeDouble(itemdetails["rate"].toString());
+    double qty = SimpleConvert.safeDouble(itemdetails["quantity"].toString());
+    if (rate > 0 && qty > 0) {
+      bool hasQtyInStock = model.hasQtyInStock(
+          itemdetails["id"],
+          model.cart,
+          itemdetails["quantity"].toString(),
+          itemdetails["available_qty"].toString(),
+          itemdetails["inventory_item_type"].toString());
+      if (allowNegativeQty || hasQtyInStock) {
+        ///
+        ///
+        /*
       if (!hasQtyInStock) {
         String productDesc = itemdetails["description"].toString();
         Get.snackbar(
@@ -349,73 +360,85 @@ class _NewOrderState extends State<NewOrder> {
             "$productDesc out of stock.",
             backgroundColor: Colors.red,
             colorText: Colors.white);
-      }
-      if (model.checkItems(itemdetails["id"], model.cart)) {
-        var product_id = itemdetails["id"];
-        model.cart.forEach((element) {
-          if (element.id == product_id) {
-            double quantity = SimpleConvert.safeDouble(element.quantity);
+      } */
+        if (model.checkItems(itemdetails["id"], model.cart)) {
+          var product_id = itemdetails["id"];
+          model.cart.forEach((element) {
+            if (element.id == product_id) {
+              double quantity = SimpleConvert.safeDouble(element.quantity);
 
-            double newQty =
-                SimpleConvert.safeDouble(itemdetails["quantity"].toString());
-            quantity += newQty;
-            element.quantity = quantity.toInt().toString();
-          }
+              double newQty =
+                  SimpleConvert.safeDouble(itemdetails["quantity"].toString());
+              quantity += newQty;
+              element.quantity = quantity.toInt().toString();
+            }
+            model.calculateTotalRate();
+          });
+        } else {
+          final dynamic checkcalculateddata = await checkTotal(itemdetails);
+          print("The calculated data");
+          print(checkcalculateddata);
+          model.addProduct(
+            ItemSchema(
+              id: itemdetails["id"],
+              partnumber: itemdetails["part_number"],
+              description: itemdetails["description"],
+              brandid: itemdetails["brand_id"],
+              brandname: itemdetails["brand_name"],
+              rate: itemdetails["rate"],
+              quantity: itemdetails["quantity"],
+              warehouseid: itemdetails["warehouse_id"],
+              unit_name: selectedunit["unit_name"].toString(),
+              unit_id: selectedunit["id"].toString(),
+              arr_units: itemdetails["arr_units"],
+              tax_code: itemdetails["tax_code"],
+              discount:
+                  SimpleConvert.safeDouble(itemdetails["discount"].toString()),
+              availableqty: itemdetails["available_qty"],
+              discount_percentage: SimpleConvert.safeDouble(
+                  itemdetails["discount_percentage"].toString()),
+              discountvalue: SimpleConvert.safeDouble(
+                  checkcalculateddata["discountvalue"].toString()),
+              discountpercentagevalue: SimpleConvert.safeDouble(
+                  checkcalculateddata["discountpercentagevalue"].toString()),
+              totalafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["total"].toString()),
+              vatafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["vatafterdiscount"].toString()),
+              subtotalafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["subtotalafterdiscount"].toString()),
+              barcode: itemdetails["bar_code"].toString(),
+              inventory_item_type:
+                  itemdetails["inventory_item_type"].toString(),
+            ),
+          );
           model.calculateTotalRate();
-        });
-      } else {
-        final dynamic checkcalculateddata = await checkTotal(itemdetails);
-        print("The calculated data");
-        print(checkcalculateddata);
-        model.addProduct(
-          ItemSchema(
-            id: itemdetails["id"],
-            partnumber: itemdetails["part_number"],
-            description: itemdetails["description"],
-            brandid: itemdetails["brand_id"],
-            brandname: itemdetails["brand_name"],
-            rate: itemdetails["rate"],
-            quantity: itemdetails["quantity"],
-            warehouseid: itemdetails["warehouse_id"],
-            unit_name: selectedunit["unit_name"].toString(),
-            unit_id: selectedunit["id"].toString(),
-            arr_units: itemdetails["arr_units"],
-            tax_code: itemdetails["tax_code"],
-            discount: itemdetails["discount"],
-            availableqty: itemdetails["available_qty"],
-            discount_percentage: itemdetails["discount_percentage"],
-            discountvalue: SimpleConvert.safeDouble(
-                checkcalculateddata["discountvalue"].toString()),
-            discountpercentagevalue: SimpleConvert.safeDouble(
-                checkcalculateddata["discountpercentagevalue"].toString()),
-            totalafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["total"].toString()),
-            vatafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["vatafterdiscount"].toString()),
-            subtotalafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["subtotalafterdiscount"].toString()),
-            barcode: itemdetails["bar_code"].toString(),
-          ),
-        );
-        model.calculateTotalRate();
 
-        focusnode.requestFocus();
-        itemFocusnode.requestFocus();
-        if (model.LineDiscountEnabled) {
-          discountController.text = model.footer_discount.toString();
+          focusnode.requestFocus();
+          itemFocusnode.requestFocus();
+          if (model.LineDiscountEnabled) {
+            discountController.text = model.footer_discount.toString();
+          }
+          setState(() {
+            itemdetails = {};
+          });
         }
         setState(() {
           itemdetails = {};
         });
+      } else {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Product out of stock",
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
       }
-      setState(() {
-        itemdetails = {};
-      });
     } else {
       Get.snackbar(
           maxWidth: MediaQuery.of(context).size.width / 4,
           "Failed",
-          "Product out of stock",
+          "Total must be greater than zero.",
           backgroundColor: Colors.red,
           colorText: Colors.white);
     }
@@ -462,12 +485,7 @@ class _NewOrderState extends State<NewOrder> {
             resizeToAvoidBottomInset: false,
             backgroundColor: API.background,
             body: mainloading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.red,
-                      strokeWidth: 1,
-                    ),
-                  )
+                ? const LoadingScreen()
                 : SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(2),
@@ -1672,7 +1690,10 @@ class _NewOrderState extends State<NewOrder> {
                                                               itemslist
                                                                   .subtotalafterdiscount,
                                                           "bar_code":
-                                                              itemslist.barcode
+                                                              itemslist.barcode,
+                                                          "inventory_item_type":
+                                                              itemslist
+                                                                  .inventory_item_type
                                                         };
                                                         setState(() {
                                                           itemdetails = data;
@@ -3789,6 +3810,10 @@ class _NewOrderState extends State<NewOrder> {
                                                                     await ApiOrder
                                                                         .convertData(
                                                                             model.cart);
+                                                                setState(() {
+                                                                  mainloading =
+                                                                      true;
+                                                                });
                                                                 final dynamic saveinvoiceresponse = await ApiOrder.save(
                                                                     userId,
                                                                     customerdetails[
@@ -3849,33 +3874,30 @@ class _NewOrderState extends State<NewOrder> {
                                                                   print(widget
                                                                       .usbdevice);
                                                                   if (widget
-                                                                      .usbdevice
-                                                                      .isNotEmpty) {
+                                                                          .usbdevice
+                                                                          .isNotEmpty ||
+                                                                      true) {
                                                                     var footerDeatils =
                                                                         {
                                                                       "sub_total":
-                                                                          saveinvoiceresponse[
-                                                                              "sub_total"],
+                                                                          saveinvoiceresponse["sub_total"]
+                                                                              .toString(),
                                                                       "vat": saveinvoiceresponse[
                                                                           "total_tax_amount"],
                                                                       "total_without_vat":
                                                                           saveinvoiceresponse[
                                                                               "total_wo_vat"],
                                                                       "discount":
-                                                                          saveinvoiceresponse[
-                                                                              "total_discount"],
+                                                                          saveinvoiceresponse["total_discount"]
+                                                                              .toString(),
                                                                       "grand_total":
                                                                           saveinvoiceresponse[
                                                                               "grand_total"],
-                                                                      "recipt_type":
-                                                                          saveinvoiceresponse[
-                                                                              "receipt_type"],
-                                                                      "received_amt":
-                                                                          saveinvoiceresponse[
-                                                                              "received_amount"],
-                                                                      "delivery_at_location": homeDelivery
-                                                                          ? "Y"
-                                                                          : "N",
+                                                                      "round_off": (saveinvoiceresponse["round_off"] ==
+                                                                              null)
+                                                                          ? "0"
+                                                                          : saveinvoiceresponse[
+                                                                              "round_off"],
                                                                       "emirates":
                                                                           saveinvoiceresponse![
                                                                               "emirates"],
@@ -3886,7 +3908,7 @@ class _NewOrderState extends State<NewOrder> {
                                                                         /// sometimes user want 2 copies of invoice;
                                                                         i < widget.numberInvoiceCopy;
                                                                         i++) {
-                                                                      API.printInvoiceWindows(
+                                                                      OrderListApi.printOrderWindows(
                                                                           BluetoothPrinter(
                                                                               deviceName: widget.usbdevice[
                                                                                   "devicename"],
@@ -3898,12 +3920,12 @@ class _NewOrderState extends State<NewOrder> {
                                                                           saveinvoiceresponse[
                                                                               "items"],
                                                                           imagebytes,
-                                                                          saveinvoiceresponse["invoice_no"]
+                                                                          saveinvoiceresponse["order_id"]
                                                                               .toString(),
                                                                           saveinvoiceresponse[
                                                                               "customer_name"],
                                                                           saveinvoiceresponse[
-                                                                              "invoice_date"],
+                                                                              "order_date"],
                                                                           saveinvoiceresponse[
                                                                               "warehouse_name"],
                                                                           widget.userdetails[
@@ -3916,10 +3938,6 @@ class _NewOrderState extends State<NewOrder> {
                                                                               "customer_phone"],
                                                                           saveinvoiceresponse[
                                                                               "sales_man"],
-                                                                          saveinvoiceresponse[
-                                                                              "receipt_type"],
-                                                                          saveinvoiceresponse[
-                                                                              "received_amount"],
                                                                           widget.userdetails[
                                                                               "trn_no"],
                                                                           saveinvoiceresponse[
@@ -3934,13 +3952,9 @@ class _NewOrderState extends State<NewOrder> {
                                                                               .toString(),
                                                                           saveinvoiceresponse[
                                                                               "customer_address"],
-                                                                          saveinvoiceresponse["received_cash_amount"]
+                                                                          saveinvoiceresponse["order_created_date_time"]
                                                                               .toString(),
-                                                                          saveinvoiceresponse["received_card_amount"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse["invoice_created_date_time"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse["invoice_id"]
+                                                                          saveinvoiceresponse["order_id"]
                                                                               .toString(),
                                                                           imgrowdatabytes,
                                                                           footerDeatils);
@@ -3952,6 +3966,10 @@ class _NewOrderState extends State<NewOrder> {
                                                                   // setStateDialog(() {
                                                                   //   dialogueloading = false;
                                                                   // });
+                                                                  setState(() {
+                                                                    mainloading =
+                                                                        false;
+                                                                  });
                                                                   model.net_total =
                                                                       0;
                                                                   pushWidgetWhileRemove(
@@ -3961,9 +3979,10 @@ class _NewOrderState extends State<NewOrder> {
                                                                       context:
                                                                           context);
                                                                 } else {
-                                                                  // setState(() {
-                                                                  //   mainloading = false;
-                                                                  // });
+                                                                  setState(() {
+                                                                    mainloading =
+                                                                        false;
+                                                                  });
 
                                                                   Get.snackbar(
                                                                       maxWidth:

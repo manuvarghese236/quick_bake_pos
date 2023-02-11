@@ -6,6 +6,8 @@ import 'package:route_transitions/route_transitions.dart';
 import 'package:windowspos/api/api.dart';
 import 'package:windowspos/frontend/addcustomer.dart';
 
+import '../loading_screen.dart';
+
 class Customers extends StatefulWidget {
   final String token;
   final Map<String, dynamic> usbdevice;
@@ -131,12 +133,7 @@ class _CustomersState extends State<Customers> {
         ],
       ),
       body: loading
-          ? Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 1,
-                color: Colors.red,
-              ),
-            )
+          ? const LoadingScreen()
           : Container(
               height: MediaQuery.of(context).size.height,
               width: MediaQuery.of(context).size.width,

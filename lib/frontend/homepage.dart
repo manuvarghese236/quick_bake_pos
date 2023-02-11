@@ -29,6 +29,7 @@ import 'package:windowspos/models/printermodel.dart';
 import 'package:windowspos/models/salesmanmodel.dart';
 
 import '../formatter.dart';
+import '../loading_screen.dart';
 
 class HomePage extends StatefulWidget {
   final int numberInvoiceCopy = 2;
@@ -370,88 +371,102 @@ class _HomePageState extends State<HomePage> {
   }
 
   addProducttoTable(CartModel model) async {
-    bool hasQtyInStock = model.hasQtyInStock(
-        itemdetails["id"],
-        model.cart,
-        itemdetails["quantity"].toString(),
-        itemdetails["available_qty"].toString());
-    if (allowNegativeQty || hasQtyInStock) {
-      ///
-      if (!hasQtyInStock) {
-        String productDesc = itemdetails["description"].toString();
-        Get.snackbar(
-            maxWidth: MediaQuery.of(context).size.width / 4,
-            "Failed",
-            "$productDesc out of stock.",
-            backgroundColor: Colors.red,
-            colorText: Colors.white);
-      }
-      if (model.checkItems(itemdetails["id"], model.cart)) {
-        var product_id = itemdetails["id"];
-        model.cart.forEach((element) {
-          if (element.id == product_id) {
-            double quantity = SimpleConvert.safeDouble(element.quantity);
+    double rate = SimpleConvert.safeDouble(itemdetails["rate"].toString());
+    double qty = SimpleConvert.safeDouble(itemdetails["quantity"].toString());
+    if (rate > 0 && qty > 0) {
+      bool hasQtyInStock = model.hasQtyInStock(
+          itemdetails["id"],
+          model.cart,
+          itemdetails["quantity"].toString(),
+          itemdetails["available_qty"].toString(),
+          itemdetails["inventory_item_type"].toString());
+      if (allowNegativeQty || hasQtyInStock) {
+        ///
+        if (!hasQtyInStock) {
+          String productDesc = itemdetails["description"].toString();
+          Get.snackbar(
+              maxWidth: MediaQuery.of(context).size.width / 4,
+              "Failed",
+              "$productDesc out of stock.",
+              backgroundColor: Colors.red,
+              colorText: Colors.white);
+        }
+        if (model.checkItems(itemdetails["id"], model.cart)) {
+          var product_id = itemdetails["id"];
+          model.cart.forEach((element) {
+            if (element.id == product_id) {
+              double quantity = SimpleConvert.safeDouble(element.quantity);
 
-            double newQty =
-                SimpleConvert.safeDouble(itemdetails["quantity"].toString());
-            quantity += newQty;
-            element.quantity = quantity.toInt().toString();
-          }
+              double newQty =
+                  SimpleConvert.safeDouble(itemdetails["quantity"].toString());
+              quantity += newQty;
+              element.quantity = quantity.toInt().toString();
+            }
+            model.calculateTotalRate();
+          });
+        } else {
+          final dynamic checkcalculateddata = await checkTotal(itemdetails);
+          print("The calculated data");
+          print(checkcalculateddata);
+          model.addProduct(
+            ItemSchema(
+              id: itemdetails["id"],
+              partnumber: itemdetails["part_number"],
+              description: itemdetails["description"],
+              brandid: itemdetails["brand_id"],
+              brandname: itemdetails["brand_name"],
+              rate: itemdetails["rate"],
+              quantity: itemdetails["quantity"],
+              warehouseid: itemdetails["warehouse_id"],
+              unit_name: selectedunit["unit_name"].toString(),
+              unit_id: selectedunit["id"].toString(),
+              arr_units: itemdetails["arr_units"],
+              tax_code: itemdetails["tax_code"],
+              discount: itemdetails["discount"],
+              availableqty: itemdetails["available_qty"],
+              discount_percentage: itemdetails["discount_percentage"],
+              discountvalue: SimpleConvert.safeDouble(
+                  checkcalculateddata["discountvalue"].toString()),
+              discountpercentagevalue: SimpleConvert.safeDouble(
+                  checkcalculateddata["discountpercentagevalue"].toString()),
+              totalafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["total"].toString()),
+              vatafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["vatafterdiscount"].toString()),
+              subtotalafterdiscount: SimpleConvert.safeDouble(
+                  checkcalculateddata["subtotalafterdiscount"].toString()),
+              barcode: itemdetails["bar_code"].toString(),
+              inventory_item_type:
+                  itemdetails["inventory_item_type"].toString(),
+            ),
+          );
           model.calculateTotalRate();
-        });
-      } else {
-        final dynamic checkcalculateddata = await checkTotal(itemdetails);
-        print("The calculated data");
-        print(checkcalculateddata);
-        model.addProduct(
-          ItemSchema(
-            id: itemdetails["id"],
-            partnumber: itemdetails["part_number"],
-            description: itemdetails["description"],
-            brandid: itemdetails["brand_id"],
-            brandname: itemdetails["brand_name"],
-            rate: itemdetails["rate"],
-            quantity: itemdetails["quantity"],
-            warehouseid: itemdetails["warehouse_id"],
-            unit_name: selectedunit["unit_name"].toString(),
-            unit_id: selectedunit["id"].toString(),
-            arr_units: itemdetails["arr_units"],
-            tax_code: itemdetails["tax_code"],
-            discount: itemdetails["discount"],
-            availableqty: itemdetails["available_qty"],
-            discount_percentage: itemdetails["discount_percentage"],
-            discountvalue: SimpleConvert.safeDouble(
-                checkcalculateddata["discountvalue"].toString()),
-            discountpercentagevalue: SimpleConvert.safeDouble(
-                checkcalculateddata["discountpercentagevalue"].toString()),
-            totalafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["total"].toString()),
-            vatafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["vatafterdiscount"].toString()),
-            subtotalafterdiscount: SimpleConvert.safeDouble(
-                checkcalculateddata["subtotalafterdiscount"].toString()),
-            barcode: itemdetails["bar_code"].toString(),
-          ),
-        );
-        model.calculateTotalRate();
 
-        focusnode.requestFocus();
-        itemFocusnode.requestFocus();
-        if (model.LineDiscountEnabled) {
-          discountController.text = model.footer_discount.toString();
+          focusnode.requestFocus();
+          itemFocusnode.requestFocus();
+          if (model.LineDiscountEnabled) {
+            discountController.text = model.footer_discount.toString();
+          }
+          setState(() {
+            itemdetails = {};
+          });
         }
         setState(() {
           itemdetails = {};
         });
+      } else {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Product out of stock",
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
       }
-      setState(() {
-        itemdetails = {};
-      });
     } else {
       Get.snackbar(
           maxWidth: MediaQuery.of(context).size.width / 4,
           "Failed",
-          "Product out of stock",
+          "Total Amount must be greater than zero",
           backgroundColor: Colors.red,
           colorText: Colors.white);
     }
@@ -465,12 +480,7 @@ class _HomePageState extends State<HomePage> {
             resizeToAvoidBottomInset: false,
             backgroundColor: API.background,
             body: mainloading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.red,
-                      strokeWidth: 1,
-                    ),
-                  )
+                ? const LoadingScreen()
                 : SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(2),
@@ -3843,6 +3853,11 @@ class _HomePageState extends State<HomePage> {
                                                                           calculationresponse =
                                                                           await API
                                                                               .convertData(model.cart);
+                                                                      setState(
+                                                                          () {
+                                                                        mainloading =
+                                                                            true;
+                                                                      });
                                                                       final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(
                                                                           model
                                                                               .orderId,
@@ -3936,6 +3951,9 @@ class _HomePageState extends State<HomePage> {
                                                                                 : "N",
                                                                             "emirates":
                                                                                 saveinvoiceresponse!["emirates"],
+                                                                            "round_off": (saveinvoiceresponse!["round_off"] == null)
+                                                                                ? "0"
+                                                                                : saveinvoiceresponse!["round_off"]
                                                                           };
                                                                           for (int i = 0;
 
@@ -3973,9 +3991,11 @@ class _HomePageState extends State<HomePage> {
                                                                                 footerDeatils);
                                                                           }
                                                                         }
-                                                                        // setState(() {
-                                                                        //   loading = false;
-                                                                        // });
+                                                                        setState(
+                                                                            () {
+                                                                          mainloading =
+                                                                              false;
+                                                                        });
                                                                         // setStateDialog(() {
                                                                         //   dialogueloading = false;
                                                                         // });
@@ -3983,10 +4003,23 @@ class _HomePageState extends State<HomePage> {
                                                                             0;
                                                                         ClearAllData(
                                                                             model);
+                                                                        pushWidgetWhileRemove(
+                                                                            newPage:
+                                                                                SuccessPage(
+                                                                              screen: HomePage(
+                                                                                token: widget.token,
+                                                                                usbdevice: widget.usbdevice,
+                                                                                userdetails: widget.userdetails,
+                                                                              ),
+                                                                            ),
+                                                                            context:
+                                                                                context);
                                                                       } else {
-                                                                        // setState(() {
-                                                                        //   mainloading = false;
-                                                                        // });
+                                                                        setState(
+                                                                            () {
+                                                                          mainloading =
+                                                                              false;
+                                                                        });
 
                                                                         Get.snackbar(
                                                                             maxWidth: MediaQuery.of(context).size.width /
@@ -5158,17 +5191,17 @@ class _HomePageState extends State<HomePage> {
                                               color: API.bordercolor,
                                             ),
                                             const SizedBox(
-                                              height: 2,
+                                              height: 1,
                                             ),
                                             Container(
                                                 height: MediaQuery.of(context)
                                                         .size
                                                         .height /
-                                                    7,
+                                                    8,
                                                 child: Padding(
                                                   padding:
                                                       const EdgeInsets.only(
-                                                          right: 10, top: 5),
+                                                          right: 10, top: 2),
                                                   child: Column(
                                                     mainAxisAlignment:
                                                         MainAxisAlignment
