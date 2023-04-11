@@ -12,8 +12,10 @@ class ItemSchema {
   final String warehouseid;
   final String unit_name;
   final String unit_id;
+  final String unit_factor;
   final List<dynamic> arr_units;
   final String tax_code;
+  final String default_unit_id;
   double discount;
   final String availableqty;
   double discount_percentage;
@@ -41,6 +43,7 @@ class ItemSchema {
       required this.warehouseid,
       required this.unit_name,
       required this.unit_id,
+      required this.unit_factor,
       required this.arr_units,
       required this.tax_code,
       required this.discount,
@@ -52,34 +55,39 @@ class ItemSchema {
       required this.vatafterdiscount,
       required this.subtotalafterdiscount,
       required this.barcode,
-      required this.inventory_item_type});
+      required this.inventory_item_type,
+      required this.default_unit_id});
 
   static ItemSchema fromJson(Map<String, dynamic> json) => ItemSchema(
-      id: json['id'],
-      partnumber: json['part_number'],
-      description: json['description'],
-      brandid: json["brand_id"],
-      brandname: json["brand_name"],
-      rate: json["selling_price"],
-      quantity: json["quantity"].toString(),
-      warehouseid: json["warehouse_id"].toString(),
-      unit_name: json["unit_name"].toString(),
-      unit_id: json["unit_id"].toString(),
-      arr_units: json["arr_units"],
-      tax_code: json["tax_code"],
-      discount: SimpleConvert.safeDouble(json["discount"].toString()),
-      availableqty: json["available_qty"].toString(),
-      discount_percentage:
-          SimpleConvert.safeDouble(json["discount_percentage"].toString()),
-      discountvalue: SimpleConvert.safeDouble(json["discountvalue"].toString()),
-      discountpercentagevalue:
-          SimpleConvert.safeDouble(json["discountpercentagevalue"].toString()),
-      totalafterdiscount:
-          SimpleConvert.safeDouble(json["totalafterdiscount"].toString()),
-      vatafterdiscount:
-          SimpleConvert.safeDouble(json["vatafterdiscount"].toString()),
-      subtotalafterdiscount:
-          SimpleConvert.safeDouble(json["subtotalafterdiscount"].toString()),
-      inventory_item_type: json["inventory_item_type"].toString(),
-      barcode: json["bar_code"].toString());
+        id: json['id'],
+        partnumber: json['part_number'],
+        description: json['description'],
+        brandid: json["brand_id"],
+        brandname: json["brand_name"],
+        rate: json["selling_price"],
+        quantity: json["quantity"].toString(),
+        warehouseid: json["warehouse_id"].toString(),
+        unit_name: json["unit_name"].toString(),
+        unit_id: json["unit_id"].toString(),
+        unit_factor: json["unit_factor"].toString(),
+        arr_units: json["arr_units"],
+        tax_code: json["tax_code"],
+        discount: SimpleConvert.safeDouble(json["discount"].toString()),
+        availableqty: json["available_qty"].toString(),
+        discount_percentage:
+            SimpleConvert.safeDouble(json["discount_percentage"].toString()),
+        discountvalue:
+            SimpleConvert.safeDouble(json["discountvalue"].toString()),
+        discountpercentagevalue: SimpleConvert.safeDouble(
+            json["discountpercentagevalue"].toString()),
+        totalafterdiscount:
+            SimpleConvert.safeDouble(json["totalafterdiscount"].toString()),
+        vatafterdiscount:
+            SimpleConvert.safeDouble(json["vatafterdiscount"].toString()),
+        subtotalafterdiscount:
+            SimpleConvert.safeDouble(json["subtotalafterdiscount"].toString()),
+        inventory_item_type: json["inventory_item_type"].toString(),
+        barcode: json["bar_code"].toString(),
+        default_unit_id: json["default_unit_id"].toString(),
+      );
 }

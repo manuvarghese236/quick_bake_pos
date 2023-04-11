@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Quick Bake"
-#define MyAppVersion "1.0.1.17"
+#define MyAppVersion "1.0.22.2"
 #define MyAppExeName "windowspos.exe"
 #define public Dependency_NoExampleSetup
 #include "CodeDependencies.iss"

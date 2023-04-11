@@ -113,15 +113,15 @@ class OrderListApi {
       bytes += printer.image(logoimage);
       //bytes += printer.emptyLines(1);
       bytes += printer.text(companyaddress,
-          styles: PosStyles(align: PosAlign.center, bold: true));
-      bytes +=
-          printer.text(companyphone, styles: PosStyles(align: PosAlign.center));
+          styles: const PosStyles(align: PosAlign.center, bold: true));
+      bytes += printer.text(companyphone,
+          styles: const PosStyles(align: PosAlign.center));
       // bytes += printer.text("TRN : " + companytrn,
       //     styles: PosStyles(align: PosAlign.center));
       //bytes += printer.emptyLines(1);
       //bytes += printer.image(im.decodeImage(imageHeadingBytes)!);
       bytes += printer.text('SALES ORDER',
-          styles: PosStyles(
+          styles: const PosStyles(
             bold: true,
             align: PosAlign.center,
             height: PosTextSize.size2,
@@ -132,11 +132,11 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
             text: "Order No",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": $invoiceno",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9),
       ]);
 
@@ -145,11 +145,11 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
             text: "Date",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": $time",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
       // bytes += printer.image(im.decodeImage(imageOutletBytes)!,
@@ -169,11 +169,11 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
             text: "Salesman",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": $salesman",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
       bytes += printer.image(im.decodeImage(imageCustomerBytes)!,
@@ -181,11 +181,11 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
             text: "Customer",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": $customername",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
       bytes +=
@@ -193,123 +193,211 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
             text: "Phone",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": $customerphone",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
       bytes += printer.row([
         PosColumn(
-            text: "Emirates",
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            text: "Location",
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 3),
         PosColumn(
             text: ": " + footerDeatils["emirates"].toString(),
-            styles: PosStyles(bold: true, align: PosAlign.left),
+            styles: const PosStyles(bold: true, align: PosAlign.left),
             width: 9)
       ]);
-
-      if (customeraddress.length <= 30) {
+      LineSplitter ls = LineSplitter();
+      List<String> _masForUsing = ls.convert(customeraddress);
+      if (_masForUsing.length > 0) {
         bytes += printer.row([
           PosColumn(
               text: "Address",
-              styles: PosStyles(bold: true, align: PosAlign.left),
+              styles: const PosStyles(bold: true, align: PosAlign.left),
               width: 3),
           PosColumn(
-              text: ": $customeraddress",
-              styles: PosStyles(bold: true, align: PosAlign.left),
+              text: ": " + _masForUsing[0],
+              styles: const PosStyles(bold: true, align: PosAlign.left),
               width: 9)
         ]);
       } else {
-        /// if address is greater than 30
         bytes += printer.row([
           PosColumn(
               text: "Address",
-              styles: PosStyles(bold: true, align: PosAlign.left),
+              styles: const PosStyles(bold: true, align: PosAlign.left),
               width: 3),
           PosColumn(
-              text: ": " + customeraddress.substring(0, 30),
-              styles: PosStyles(bold: true, align: PosAlign.left),
-              width: 9)
-        ]);
-        bytes += printer.row([
-          PosColumn(
-              text: " ",
-              styles: PosStyles(bold: true, align: PosAlign.left),
-              width: 3),
-          PosColumn(
-              text: " " + customeraddress.substring(30, customeraddress.length),
-              styles: PosStyles(bold: true, align: PosAlign.left),
+              text: ": $customeraddress",
+              styles: const PosStyles(bold: true, align: PosAlign.left),
               width: 9)
         ]);
       }
+      for (var i = 1; i < _masForUsing.length; i++) {
+        bytes += printer.row([
+          PosColumn(
+              text: _masForUsing[i],
+              styles: const PosStyles(bold: true, align: PosAlign.left),
+              width: 12)
+        ]);
+      }
+      // } else {
+      //   /// if address is greater than 30
+      //   String address1 = customeraddress.substring(0, 30);
+      //   String address2 = customeraddress.substring(30, customeraddress.length);
+      //   bytes += printer.row([
+      //     PosColumn(
+      //         text: "Address",
+      //         styles: const PosStyles(bold: true, align: PosAlign.left),
+      //         width: 3),
+      //     PosColumn(
+      //         text: ": " + address1,
+      //         styles: const PosStyles(bold: true, align: PosAlign.left),
+      //         width: 9)
+      //   ]);
+      //   bytes += printer.row([
+      //     PosColumn(
+      //         text: address2,
+      //         styles: const PosStyles(bold: true, align: PosAlign.left),
+      //         width: 12)
+      //   ]);
+      // }
       //bytes += printer.emptyLines(1);
       bytes += printer.hr();
       bytes += printer.image(im.decodeImage(rowimage)!);
       bytes += printer.row([
         PosColumn(
             text: "Sl",
-            styles: PosStyles(
+            styles: const PosStyles(
               bold: true,
             ),
             width: 1),
-        PosColumn(text: "Description", styles: PosStyles(bold: true), width: 5),
-        PosColumn(text: "Rate", styles: PosStyles(bold: true), width: 2),
-        PosColumn(text: "Qty", styles: PosStyles(bold: true), width: 2),
-        PosColumn(text: "Amount", styles: PosStyles(bold: true), width: 2),
+        PosColumn(
+            text: "Description", styles: const PosStyles(bold: true), width: 5),
+        PosColumn(text: "Qty", styles: const PosStyles(bold: true), width: 2),
+        PosColumn(text: "Rate", styles: const PosStyles(bold: true), width: 2),
+        PosColumn(
+            text: "Amount", styles: const PosStyles(bold: true), width: 2),
       ]);
       bytes += printer.hr();
+      int qty = 0;
       for (int i = 0; i < itemslist.length; i++) {
-        bytes += printer.row([
-          PosColumn(
-              text: (i + 1).toString(),
-              styles: PosStyles(bold: false),
-              width: 1),
-          PosColumn(
-              text: itemslist[i]["description"],
-              styles: PosStyles(bold: false),
-              width: 5),
-          PosColumn(
-              text: itemslist[i]["rate"] == ""
-                  ? ""
-                  : SimpleConvert.safeDouble(itemslist[i]["rate"])
-                      .toStringAsFixed(2),
-              styles: PosStyles(bold: false, align: PosAlign.left),
-              width: 2),
-          PosColumn(
-              text: itemslist[i]["quantity"] == ""
-                  ? ""
-                  : SimpleConvert.safeDouble(itemslist[i]["quantity"])
-                      .toStringAsFixed(2),
-              styles: PosStyles(bold: false, align: PosAlign.left),
-              width: 2),
-          PosColumn(
-              text: (SimpleConvert.safeDouble(itemslist[i]["rate"]) *
-                      SimpleConvert.safeDouble(itemslist[i]["quantity"]))
-                  .toStringAsFixed(2),
-              styles: PosStyles(bold: false, align: PosAlign.right),
-              width: 2),
-        ]);
+        if (itemslist[i]["inventory_item_type"] == "1") {
+          String description = itemslist[i]["description"].toString();
+
+          qty += SimpleConvert.safeDouble(
+                  itemslist[i]["quantity"].toString().replaceAll(",", ""))
+              .toInt();
+          bytes += printer.row([
+            PosColumn(
+                text: (i + 1).toString(),
+                styles: const PosStyles(bold: false),
+                width: 1),
+            PosColumn(
+                text: (description.length > 15)
+                    ? description.substring(0, 15)
+                    : description,
+                styles: const PosStyles(bold: false),
+                width: 5),
+            PosColumn(
+                text: itemslist[i]["quantity"] == ""
+                    ? ""
+                    : SimpleConvert.safeDouble(itemslist[i]["quantity"])
+                            .toStringAsFixed(0) +
+                        " " +
+                        itemslist[i]["unit_name"].toString(),
+                styles: const PosStyles(bold: false, align: PosAlign.left),
+                width: 2),
+            PosColumn(
+                text: itemslist[i]["rate"] == ""
+                    ? ""
+                    : SimpleConvert.safeDouble(itemslist[i]["rate"])
+                        .toStringAsFixed(2),
+                styles: const PosStyles(bold: false, align: PosAlign.left),
+                width: 2),
+            PosColumn(
+                text: (SimpleConvert.safeDouble(itemslist[i]["rate"]) *
+                        SimpleConvert.safeDouble(itemslist[i]["quantity"]))
+                    .toStringAsFixed(2),
+                styles: const PosStyles(bold: false, align: PosAlign.right),
+                width: 2),
+          ]);
+          if ((description.length > 15)) {
+            bytes += printer.row([
+              PosColumn(
+                  text: "", styles: const PosStyles(bold: false), width: 1),
+              PosColumn(
+                  text: description.substring(15),
+                  styles: const PosStyles(bold: true, align: PosAlign.left),
+                  width: 11)
+            ]);
+          }
+        }
       }
       bytes += printer.hr();
+      bytes += printer.row([
+        PosColumn(
+          text: "Total Qty",
+          styles: const PosStyles(bold: false, align: PosAlign.left),
+          width: 4,
+        ),
+        PosColumn(
+          text: ":",
+          styles: const PosStyles(bold: false, align: PosAlign.right),
+          width: 2,
+        ),
+        PosColumn(
+            text: qty.toString(),
+            styles: const PosStyles(bold: false, align: PosAlign.right),
+            width: 6),
+      ]);
+
+      /// Now Delivery Items
+      for (int i = 0; i < itemslist.length; i++) {
+        if (itemslist[i]["inventory_item_type"] == "2") {
+          bytes += printer.row([
+            PosColumn(
+                text:
+                    //  itemslist[i]["part_number"] +
+                    //     " " +
+                    itemslist[i]["description"],
+                styles: const PosStyles(bold: false),
+                width: 4),
+            PosColumn(
+              text: ":",
+              styles: const PosStyles(bold: false, align: PosAlign.right),
+              width: 2,
+            ),
+            PosColumn(
+                text: (SimpleConvert.safeDouble(itemslist[i]["rate"]) *
+                        SimpleConvert.safeDouble(itemslist[i]["quantity"]))
+                    .toStringAsFixed(2),
+                styles: const PosStyles(bold: false, align: PosAlign.right),
+                width: 6),
+          ]);
+        }
+      }
+
       bytes += printer.image(im.decodeImage(imageSubTotalBytes)!,
           align: PosAlign.left);
       bytes += printer.row([
         PosColumn(
           text: "Sub Total",
-          styles: PosStyles(bold: false, align: PosAlign.left),
+          styles: const PosStyles(bold: false, align: PosAlign.left),
           width: 4,
         ),
         PosColumn(
           text: ":",
-          styles: PosStyles(bold: false, align: PosAlign.right),
+          styles: const PosStyles(bold: false, align: PosAlign.right),
           width: 2,
         ),
         PosColumn(
-            text: footerDeatils["sub_total"].toString(),
-            styles: PosStyles(bold: false, align: PosAlign.right),
+            text:
+                SimpleConvert.safeDouble(footerDeatils["sub_total"].toString())
+                    .toStringAsFixed(2),
+            styles: const PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
       bytes += printer.image(im.decodeImage(imageDiscountBytes)!,
@@ -321,12 +409,12 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
           text: "Discount",
-          styles: PosStyles(bold: false, align: PosAlign.left),
+          styles: const PosStyles(bold: false, align: PosAlign.left),
           width: 4,
         ),
         PosColumn(
           text: ":",
-          styles: PosStyles(bold: false, align: PosAlign.right),
+          styles: const PosStyles(bold: false, align: PosAlign.right),
           width: 2,
         ),
         PosColumn(
@@ -336,7 +424,7 @@ class OrderListApi {
                         ? "0.00"
                         : discount.toString())
                     .toStringAsFixed(2),
-            styles: PosStyles(bold: false, align: PosAlign.right),
+            styles: const PosStyles(bold: false, align: PosAlign.right),
             width: 6),
       ]);
       bytes +=
@@ -346,12 +434,12 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
           text: "Round Off",
-          styles: PosStyles(bold: true, align: PosAlign.left),
+          styles: const PosStyles(bold: true, align: PosAlign.left),
           width: 4,
         ),
         PosColumn(
           text: ":",
-          styles: PosStyles(bold: true, align: PosAlign.right),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
           width: 2,
         ),
         PosColumn(
@@ -359,7 +447,7 @@ class OrderListApi {
                 ? ""
                 : SimpleConvert.safeDouble(round_off.toString())
                     .toStringAsFixed(2),
-            styles: PosStyles(bold: true, align: PosAlign.right),
+            styles: const PosStyles(bold: true, align: PosAlign.right),
             width: 6),
       ]);
 
@@ -369,12 +457,12 @@ class OrderListApi {
       bytes += printer.row([
         PosColumn(
           text: "Grand Total",
-          styles: PosStyles(bold: true, align: PosAlign.left),
+          styles: const PosStyles(bold: true, align: PosAlign.left),
           width: 4,
         ),
         PosColumn(
           text: ":",
-          styles: PosStyles(bold: true, align: PosAlign.right),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
           width: 2,
         ),
         PosColumn(
@@ -382,14 +470,14 @@ class OrderListApi {
                 ? ""
                 : SimpleConvert.safeDouble(grandtotal.toString())
                     .toStringAsFixed(2),
-            styles: PosStyles(bold: true, align: PosAlign.right),
+            styles: const PosStyles(bold: true, align: PosAlign.right),
             width: 6),
       ]);
       bytes += printer.hr();
 
       //bytes += printer.emptyLines(1);
       bytes += printer.text('Thank you !! Visit Again',
-          styles: PosStyles(align: PosAlign.center));
+          styles: const PosStyles(align: PosAlign.center));
       //bytes += printer.emptyLines(1);
       List<dynamic> invoiceidlistdata =
           invoiceno.split("").map(int.parse).toList();
@@ -407,7 +495,7 @@ class OrderListApi {
               typePrinter: PrinterType.usb));
       return "success";
     } catch (e) {
-      print("this is catch part");
+      print("this is catch part. $e");
       return e.toString();
     }
   }

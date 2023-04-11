@@ -13,9 +13,28 @@ class SimpleConvert {
       return (doubleNum == null || doubleNum.isNaN) ? 0.0 : doubleNum;
     }
   }
+
+  static String splitString(String input) {
+    int lineLength = 16;
+    String output = "";
+    int index = 0;
+    while (index < input.length) {
+      int newlen = index + lineLength;
+      if (input.length > newlen) {
+        output += "${input.substring(index, index + lineLength)}\n";
+      } else {
+        output += input.substring(index, input.length);
+      }
+      index += lineLength;
+    }
+    print("static String splitString(String input)");
+    print(output);
+    return output.trim();
+  }
 }
 
 class CartModel extends Model {
+  bool isRoundOffEnabled = false;
   List<ItemSchema> cart = [];
   bool LineDiscountEnabled = false;
   double total_with_out_vat = 0;
@@ -175,8 +194,8 @@ class CartModel extends Model {
     notifyListeners();
   }
 
-  void removeProduct(String productid) {
-    cart.removeWhere((val) => val.id == productid);
+  void removeProduct(String productid, String unitId) {
+    cart.removeWhere((val) => val.id == productid && val.unit_id == unitId);
     notifyListeners();
   }
 
@@ -195,10 +214,10 @@ class CartModel extends Model {
     notifyListeners();
   }
 
-  bool checkItems(String productid, List<ItemSchema> cartlist) {
+  bool checkItems(String productid, String unitId, List<ItemSchema> cartlist) {
     for (var e in cartlist) {
       print(e.id);
-      if (e.id == productid) {
+      if (e.id == productid && e.unit_id == unitId) {
         print("The element in the cart is");
         print(e.quantity);
         return true;
@@ -208,35 +227,57 @@ class CartModel extends Model {
     return false;
   }
 
-  bool hasQtyInStock(String productid, List<ItemSchema> cartlist, String Qty,
-      String totalQty, String inventory_item_type) {
-    double _qtyDouble = SimpleConvert.safeDouble(Qty);
-    double _totalQty = SimpleConvert.safeDouble(totalQty);
-    double _currenCartQty = 0;
-    bool status = true;
+  ///
+  bool hasQtyInStock(
+      String productid,
+      List<ItemSchema> cartlist,
+      String Qty,
+      String totalQty,
+      String inventory_item_type,
+      String unitId,
+      String unitFactor) {
+    ///
+    /// required Qty Double
+    ///
+    double requiredQtyDouble =
+        SimpleConvert.safeDouble(Qty) * SimpleConvert.safeDouble(unitFactor);
+
+    /// total Qty In Store
+    double totalQtyInStore = SimpleConvert.safeDouble(totalQty) *
+        SimpleConvert.safeDouble(unitFactor);
+    double currentCartQty = 0;
+
     if (inventory_item_type == "1") {
       // 1 for stock item
       for (var e in cartlist) {
         print(e.id);
         if (e.id == productid) {
-          _currenCartQty = SimpleConvert.safeDouble(e.quantity);
+          currentCartQty += SimpleConvert.safeDouble(e.quantity) *
+              SimpleConvert.safeDouble(e.unit_factor);
         }
       }
-      return (_qtyDouble <= (_totalQty - _currenCartQty));
+      double actualQtyRemaining = totalQtyInStore - currentCartQty;
+      return (requiredQtyDouble <= actualQtyRemaining);
     } else {
       return true;
     }
   }
 
   void roundOff() {
-    try {
-      double multiplier = 0.50;
-      if (net_total_before_round_off.isNaN) {
-        net_total_before_round_off = 0;
+    if (isRoundOffEnabled) {
+      try {
+        double multiplier = 0.50;
+        if (net_total_before_round_off.isNaN) {
+          net_total_before_round_off = 0;
+        }
+        net_total =
+            (net_total_before_round_off + multiplier).toInt().toDouble();
+        round_off_amount = net_total - net_total_before_round_off;
+      } on Exception catch (e) {
+        round_off_amount = 0;
+        net_total = net_total_before_round_off;
       }
-      net_total = (net_total_before_round_off + multiplier).toInt().toDouble();
-      round_off_amount = net_total - net_total_before_round_off;
-    } on Exception catch (e) {
+    } else {
       round_off_amount = 0;
       net_total = net_total_before_round_off;
     }

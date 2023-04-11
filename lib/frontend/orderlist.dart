@@ -995,14 +995,17 @@ class _OrderListState extends State<OrderList> {
                               : ListView.separated(
                                   itemCount: Orderlist.length,
                                   itemBuilder: (context, index) {
+                                    bool selected = (lastSelectOrderId ==
+                                        Orderlist[index]["id"].toString());
                                     return ListTile(
+                                      selectedTileColor: Colors.blue.shade100,
+                                      selected: selected,
                                       onTap: () {
                                         setState(() {
                                           selectedreceipt = Orderlist[index];
                                           paymentChange = false;
                                           lastSelectOrderId =
-                                              selectedreceipt!["Order_id"]
-                                                  .toString();
+                                              selectedreceipt!["id"].toString();
                                         });
                                       },
                                       leading: Container(
@@ -1429,6 +1432,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         SimpleConvert.safeDouble(selectedreceipt!["items"][index]["rate"])
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1440,6 +1445,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         SimpleConvert.safeDouble(selectedreceipt!["items"][index]["quantity"])
                                                                             .toStringAsFixed(0),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1451,6 +1458,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         selectedreceipt!["items"][index]["unit_name"]
                                                                             .toString(),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1463,6 +1472,8 @@ class _OrderListState extends State<OrderList> {
                                                                         (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["quantity"]) *
                                                                                 SimpleConvert.safeDouble(selectedreceipt!["items"][index]["rate"]))
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1474,6 +1485,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["discount"]))
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1486,6 +1499,8 @@ class _OrderListState extends State<OrderList> {
                                                                         (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["total_amount"]) -
                                                                                 SimpleConvert.safeDouble(selectedreceipt!["items"][index]["tax_vat_amount"]))
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1497,6 +1512,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         (SimpleConvert.safeDouble(selectedreceipt!["items"][index]["tax_vat_amount"]))
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1508,6 +1525,8 @@ class _OrderListState extends State<OrderList> {
                                                                       Text(
                                                                         SimpleConvert.safeDouble(selectedreceipt!["items"][index]["total_amount"])
                                                                             .toStringAsFixed(2),
+                                                                        textAlign:
+                                                                            TextAlign.right,
                                                                         style: const TextStyle(
                                                                             color: Colors
                                                                                 .black,
@@ -1828,6 +1847,108 @@ class _OrderListState extends State<OrderList> {
                                                                 Text(
                                                                   selectedreceipt![
                                                                           "customer_name"]
+                                                                      .toString(),
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: const TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 8,
+                                                                ),
+                                                                const Text(
+                                                                  "Customer Phone",
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                Text(
+                                                                  selectedreceipt![
+                                                                          "customer_phone"]
+                                                                      .toString(),
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: const TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 8,
+                                                                ),
+                                                                const Text(
+                                                                  "Location",
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                Text(
+                                                                  selectedreceipt![
+                                                                          "emirates"]
+                                                                      .toString(),
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: const TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 8,
+                                                                ),
+                                                                const Text(
+                                                                  "Customer Address",
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .start,
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      fontFamily:
+                                                                          'Montserrat'),
+                                                                ),
+                                                                Text(
+                                                                  selectedreceipt![
+                                                                          "customer_address"]
                                                                       .toString(),
                                                                   textAlign:
                                                                       TextAlign

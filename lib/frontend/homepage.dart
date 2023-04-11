@@ -28,6 +28,7 @@ import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:windowspos/models/printermodel.dart';
 import 'package:windowspos/models/salesmanmodel.dart';
 
+import '../api/delivery_model.dart';
 import '../formatter.dart';
 import '../loading_screen.dart';
 
@@ -52,6 +53,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   /// Allow negative Qty
   bool allowNegativeQty = false;
+  bool isDeliveryChargesAdded = false;
 
   /// TextEditingController
   TextEditingController receivedamountcontroller = TextEditingController();
@@ -63,6 +65,7 @@ class _HomePageState extends State<HomePage> {
   FocusNode footerDiscountNode = FocusNode();
   FocusNode barcodeFocusNode = FocusNode();
   FocusNode itemFocusnode = FocusNode();
+  FocusNode rateFocusnode = FocusNode();
   var customerContactList = [];
   var defaultCustomerContactList = [];
   String? selectedContact = null;
@@ -209,7 +212,7 @@ class _HomePageState extends State<HomePage> {
   calculateReceivedAmount() {
     setState(() {
       receivedamountcontroller.text =
-          (double.parse(card_amount == "" ? "0.00" : card_amount) +
+          (SimpleConvert.safeDouble(card_amount == "" ? "0.00" : card_amount) +
                   SimpleConvert.safeDouble(
                       cash_amount == "" ? "0.00" : cash_amount))
               .toStringAsFixed(2);
@@ -239,10 +242,10 @@ class _HomePageState extends State<HomePage> {
   // Uint8List? imgdatabytes;
 
   List<dynamic> receipttype = [
+    {"type": "Credit Sale", "code": "CR"},
     {"type": "Cash", "code": "CH"},
     {"type": "Card", "code": "CA"},
     {"type": "Cash + Card", "code": "CC"},
-    {"type": "Credit Sale", "code": "CR"},
   ];
   //removed select receipt type and set cash as default.
 // {"type": "Select", "code": ""},
@@ -296,12 +299,15 @@ class _HomePageState extends State<HomePage> {
     print("called checkTotal : Inside checking total before adding to cart");
     print(itemdetails);
 
-    num totalbeforediscount = (double.parse(itemdetails["rate"].toString()) *
-        SimpleConvert.safeDouble(itemdetails["quantity"].toString()));
+    num totalbeforediscount =
+        (SimpleConvert.safeDouble(itemdetails["rate"].toString()) *
+            SimpleConvert.safeDouble(itemdetails["quantity"].toString()));
     print("The total after discount only");
     print(totalbeforediscount);
 
-    if (double.parse(itemdetails["discount_percentage"].toString()) == 0) {
+    if (SimpleConvert.safeDouble(
+            itemdetails["discount_percentage"].toString()) ==
+        0) {
       total = totalbeforediscount -
           SimpleConvert.safeDouble(itemdetails["discount"].toString());
     } else {
@@ -337,8 +343,8 @@ class _HomePageState extends State<HomePage> {
                               itemdetails["tax_code"].toString())
                           .toStringAsFixed(1))))
               .toStringAsFixed(6),
-      "vatafterdiscount": (double.parse(total.toString()) -
-              ((double.parse(total.toString()) * 100) /
+      "vatafterdiscount": (SimpleConvert.safeDouble(total.toString()) -
+              ((SimpleConvert.safeDouble(total.toString()) * 100) /
                   (100 +
                       SimpleConvert.safeDouble(SimpleConvert.safeDouble(
                               itemdetails["tax_code"].toString())
@@ -375,11 +381,14 @@ class _HomePageState extends State<HomePage> {
     double qty = SimpleConvert.safeDouble(itemdetails["quantity"].toString());
     if (rate > 0 && qty > 0) {
       bool hasQtyInStock = model.hasQtyInStock(
-          itemdetails["id"],
-          model.cart,
-          itemdetails["quantity"].toString(),
-          itemdetails["available_qty"].toString(),
-          itemdetails["inventory_item_type"].toString());
+        itemdetails["id"],
+        model.cart,
+        itemdetails["quantity"].toString(),
+        selectedunit["quantity"].toString(),
+        itemdetails["inventory_item_type"].toString(),
+        selectedunit["id"].toString(),
+        selectedunit["unit_factor"].toString()
+      );
       if (allowNegativeQty || hasQtyInStock) {
         ///
         if (!hasQtyInStock) {
@@ -391,10 +400,12 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: Colors.red,
               colorText: Colors.white);
         }
-        if (model.checkItems(itemdetails["id"], model.cart)) {
+        if (model.checkItems(
+            itemdetails["id"], selectedunit["id"].toString(), model.cart)) {
           var product_id = itemdetails["id"];
           model.cart.forEach((element) {
-            if (element.id == product_id) {
+            if (element.id == product_id &&
+                element.unit_id == selectedunit["id"].toString()) {
               double quantity = SimpleConvert.safeDouble(element.quantity);
 
               double newQty =
@@ -420,11 +431,14 @@ class _HomePageState extends State<HomePage> {
               warehouseid: itemdetails["warehouse_id"],
               unit_name: selectedunit["unit_name"].toString(),
               unit_id: selectedunit["id"].toString(),
+              unit_factor:selectedunit["unit_factor"].toString() ,
               arr_units: itemdetails["arr_units"],
               tax_code: itemdetails["tax_code"],
-              discount: itemdetails["discount"],
+              discount:
+                  SimpleConvert.safeDouble(itemdetails["discount"].toString()),
               availableqty: itemdetails["available_qty"],
-              discount_percentage: itemdetails["discount_percentage"],
+              discount_percentage: SimpleConvert.safeDouble(
+                  itemdetails["discount_percentage"].toString()),
               discountvalue: SimpleConvert.safeDouble(
                   checkcalculateddata["discountvalue"].toString()),
               discountpercentagevalue: SimpleConvert.safeDouble(
@@ -438,6 +452,7 @@ class _HomePageState extends State<HomePage> {
               barcode: itemdetails["bar_code"].toString(),
               inventory_item_type:
                   itemdetails["inventory_item_type"].toString(),
+              default_unit_id: itemdetails["default_unit_id"].toString(),
             ),
           );
           model.calculateTotalRate();
@@ -1685,16 +1700,44 @@ class _HomePageState extends State<HomePage> {
                                                               itemslist
                                                                   .subtotalafterdiscount,
                                                           "bar_code":
-                                                              itemslist.barcode
+                                                              itemslist.barcode,
+                                                          "inventory_item_type":
+                                                              itemslist
+                                                                  .inventory_item_type,
+                                                          "default_unit_id":
+                                                              itemslist
+                                                                  .default_unit_id
                                                         };
                                                         setState(() {
                                                           itemdetails = data;
+                                                          String defaultUnitId =
+                                                              itemdetails[
+                                                                      "default_unit_id"]
+                                                                  .toString();
                                                           selectedunit =
                                                               itemslist
                                                                   .arr_units[0];
+                                                          itemdetails["rate"] =
+                                                              selectedunit[
+                                                                      "unit_price"]
+                                                                  .toString();
                                                           array_units =
                                                               itemslist
                                                                   .arr_units;
+                                                          for (var element
+                                                              in array_units) {
+                                                            if (element["id"]
+                                                                    .toString() ==
+                                                                defaultUnitId) {
+                                                              selectedunit =
+                                                                  element;
+                                                              itemdetails[
+                                                                  "rate"] = element[
+                                                                      "unit_price"]
+                                                                  .toString();
+                                                              break;
+                                                            }
+                                                          }
                                                           qtyfocusnode
                                                               .requestFocus();
                                                         });
@@ -1704,102 +1747,6 @@ class _HomePageState extends State<HomePage> {
                                                 ),
                                     ],
                                   ),
-                                  itemdetails.isNotEmpty
-                                      ? Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceAround,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Rate".toUpperCase(),
-                                                  textAlign: TextAlign.start,
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontFamily: 'Montserrat'),
-                                                ),
-                                              ],
-                                            ),
-                                            Container(
-                                              width: MediaQuery.of(context)
-                                                      .size
-                                                      .width /
-                                                  13,
-                                              height: 44,
-                                              // color: Colors.red,
-                                              child: TextFormField(
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                initialValue:
-                                                    itemdetails["rate"],
-                                                style: TextStyle(
-                                                    color: API.textcolor,
-                                                    fontWeight:
-                                                        FontWeight.w400),
-                                                decoration: InputDecoration(
-                                                    filled: true,
-                                                    fillColor:
-                                                        const Color.fromRGBO(
-                                                            248, 248, 253, 1),
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide: BorderSide(
-                                                        color: API.bordercolor,
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                        color: Colors.green,
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    hintStyle: const TextStyle(
-                                                        fontFamily:
-                                                            'Montserrat',
-                                                        color: Color.fromRGBO(
-                                                            181, 184, 203, 1),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontSize: 14),
-                                                    contentPadding:
-                                                        const EdgeInsets.fromLTRB(
-                                                            10.0,
-                                                            10.0,
-                                                            10.0,
-                                                            10.0),
-                                                    // ignore: unnecessary_null_comparison
-                                                    hintText: 'Rate',
-                                                    border: OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4.0))),
-                                                onChanged: (val) {
-                                                  setState(() {
-                                                    itemdetails["rate"] = val;
-                                                  });
-                                                  print(itemdetails);
-                                                },
-                                              ),
-                                            )
-                                          ],
-                                        )
-                                      : const SizedBox(),
                                   itemdetails.isNotEmpty
                                       ? Column(
                                           crossAxisAlignment:
@@ -1929,6 +1876,114 @@ class _HomePageState extends State<HomePage> {
                                                   MainAxisAlignment.start,
                                               children: [
                                                 Text(
+                                                  "Rate".toUpperCase(),
+                                                  textAlign: TextAlign.start,
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontFamily: 'Montserrat'),
+                                                ),
+                                              ],
+                                            ),
+                                            Container(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width /
+                                                  13,
+                                              height: 44,
+                                              // color: Colors.red,
+                                              child: CallbackShortcuts(
+                                                bindings: {
+                                                  const SingleActivator(
+                                                      LogicalKeyboardKey
+                                                          .enter): () =>
+                                                      addProducttoTable(model),
+                                                },
+                                                child: TextFormField(
+                                                  key: Key(itemdetails["rate"]
+                                                      .toString()),
+                                                  focusNode: rateFocusnode,
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  initialValue:
+                                                      itemdetails["rate"],
+                                                  style: TextStyle(
+                                                      color: API.textcolor,
+                                                      fontWeight:
+                                                          FontWeight.w400),
+                                                  decoration: InputDecoration(
+                                                      filled: true,
+                                                      fillColor:
+                                                          const Color.fromRGBO(
+                                                              248, 248, 253, 1),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4.0),
+                                                        borderSide: BorderSide(
+                                                          color:
+                                                              API.bordercolor,
+                                                          width: 1.0,
+                                                        ),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4.0),
+                                                        borderSide:
+                                                            const BorderSide(
+                                                          color: Colors.green,
+                                                          width: 1.0,
+                                                        ),
+                                                      ),
+                                                      hintStyle: const TextStyle(
+                                                          fontFamily:
+                                                              'Montserrat',
+                                                          color: Color.fromRGBO(
+                                                              181, 184, 203, 1),
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontSize: 14),
+                                                      contentPadding:
+                                                          const EdgeInsets.fromLTRB(
+                                                              10.0,
+                                                              10.0,
+                                                              10.0,
+                                                              10.0),
+                                                      // ignore: unnecessary_null_comparison
+                                                      hintText: 'Rate',
+                                                      border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4.0))),
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      itemdetails["rate"] = val;
+                                                    });
+                                                    print(itemdetails);
+                                                  },
+                                                ),
+                                              ),
+                                            )
+                                          ],
+                                        )
+                                      : const SizedBox(),
+                                  itemdetails.isNotEmpty
+                                      ? Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              children: [
+                                                Text(
                                                   "Unit".toUpperCase(),
                                                   textAlign: TextAlign.start,
                                                   style: const TextStyle(
@@ -2015,6 +2070,9 @@ class _HomePageState extends State<HomePage> {
                                                     onChanged: (data) async {
                                                       setState(() {
                                                         selectedunit = data;
+                                                        itemdetails["rate"] =
+                                                            data["unit_price"]
+                                                                .toString();
                                                       });
                                                     },
                                                     items: array_units
@@ -2453,7 +2511,7 @@ class _HomePageState extends State<HomePage> {
                                                                   1.8 /
                                                                   8,
                                                               child: const Text(
-                                                                "Rate",
+                                                                "Qty",
                                                                 textAlign:
                                                                     TextAlign
                                                                         .start,
@@ -2477,7 +2535,7 @@ class _HomePageState extends State<HomePage> {
                                                                   1.8 /
                                                                   8,
                                                               child: const Text(
-                                                                "Qty",
+                                                                "Rate",
                                                                 textAlign:
                                                                     TextAlign
                                                                         .start,
@@ -2493,6 +2551,7 @@ class _HomePageState extends State<HomePage> {
                                                                         'Montserrat'),
                                                               ),
                                                             ),
+
                                                             Container(
                                                               width: MediaQuery.of(
                                                                           context)
@@ -2755,12 +2814,12 @@ class _HomePageState extends State<HomePage> {
                                                                           1.8 /
                                                                           8,
                                                                       // color: Colors
-                                                                      //     .yellow,
+                                                                      //     .red,
                                                                       child:
                                                                           Text(
                                                                         model
                                                                             .cart[index]
-                                                                            .rate,
+                                                                            .quantity,
                                                                         textAlign:
                                                                             TextAlign.start,
                                                                         style: const TextStyle(
@@ -2780,12 +2839,12 @@ class _HomePageState extends State<HomePage> {
                                                                           1.8 /
                                                                           8,
                                                                       // color: Colors
-                                                                      //     .red,
+                                                                      //     .yellow,
                                                                       child:
                                                                           Text(
                                                                         model
                                                                             .cart[index]
-                                                                            .quantity,
+                                                                            .rate,
                                                                         textAlign:
                                                                             TextAlign.start,
                                                                         style: const TextStyle(
@@ -2798,6 +2857,7 @@ class _HomePageState extends State<HomePage> {
                                                                             fontFamily: 'Montserrat'),
                                                                       ),
                                                                     ),
+
                                                                     Container(
                                                                       width: MediaQuery.of(context)
                                                                               .size
@@ -2832,7 +2892,7 @@ class _HomePageState extends State<HomePage> {
                                                                           8,
                                                                       child:
                                                                           Text(
-                                                                        SimpleConvert.safeDouble((double.parse(model.cart[index].rate) * SimpleConvert.safeDouble(model.cart[index].quantity)).toString())
+                                                                        SimpleConvert.safeDouble((SimpleConvert.safeDouble(model.cart[index].rate) * SimpleConvert.safeDouble(model.cart[index].quantity)).toString())
                                                                             .toStringAsFixed(2),
                                                                         textAlign:
                                                                             TextAlign.start,
@@ -2975,7 +3035,8 @@ class _HomePageState extends State<HomePage> {
                                                                       IconButton(
                                                                           onPressed:
                                                                               () {
-                                                                            model.removeProduct(model.cart[index].id);
+                                                                            model.removeProduct(model.cart[index].id,
+                                                                                model.cart[index].unit_id);
                                                                             model.calculateTotalRate();
                                                                             if (model.LineDiscountEnabled) {
                                                                               discountController.text = model.footer_discount.toString();
@@ -3741,6 +3802,52 @@ class _HomePageState extends State<HomePage> {
                                                         ),
                                                       ],
                                                     ),
+                                                    Column(
+                                                      children: [
+                                                        RawMaterialButton(
+                                                          onPressed: () {
+                                                            addDeliverycharges(
+                                                                model);
+                                                          },
+                                                          elevation: 2.0,
+                                                          fillColor:
+                                                              Colors.amber,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(5.0),
+                                                          shape: const CircleBorder(
+                                                              side: BorderSide(
+                                                                  color: Colors
+                                                                      .white)),
+                                                          child: const FaIcon(
+                                                            FontAwesomeIcons
+                                                                .shippingFast,
+                                                            color: Colors.white,
+                                                            size: 14,
+                                                          ),
+                                                        ),
+                                                        const Padding(
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                                  vertical: 2),
+                                                          child: Text(
+                                                            "Add Delivery charges",
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                                fontFamily:
+                                                                    'Montserrat',
+                                                                color: Colors
+                                                                    .black,
+                                                                fontSize: 10,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold),
+                                                          ),
+                                                        )
+                                                      ],
+                                                    )
                                                   ],
                                                 ),
                                                 Row(
@@ -3750,303 +3857,8 @@ class _HomePageState extends State<HomePage> {
                                                     Column(
                                                       children: [
                                                         RawMaterialButton(
-                                                          onPressed: () async {
-                                                            if (customerdetails
-                                                                .isEmpty) {
-                                                              Get.snackbar(
-                                                                  maxWidth: MediaQuery.of(
-                                                                              context)
-                                                                          .size
-                                                                          .width /
-                                                                      4,
-                                                                  "Failed",
-                                                                  "Please select customer"
-                                                                      .toString(),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                  colorText:
-                                                                      Colors
-                                                                          .white);
-                                                            } else {
-                                                              if (model.cart
-                                                                  .isEmpty) {
-                                                                Get.snackbar(
-                                                                    maxWidth: MediaQuery.of(
-                                                                                context)
-                                                                            .size
-                                                                            .width /
-                                                                        4,
-                                                                    "Failed",
-                                                                    "Please select items"
-                                                                        .toString(),
-                                                                    backgroundColor:
-                                                                        Colors
-                                                                            .red,
-                                                                    colorText:
-                                                                        Colors
-                                                                            .white);
-                                                              } else {
-                                                                if (receivedamountcontroller
-                                                                            .text ==
-                                                                        "" &&
-                                                                    selectedreceipttype[
-                                                                            "code"] ==
-                                                                        "") {
-                                                                  Get.snackbar(
-                                                                      maxWidth:
-                                                                          MediaQuery.of(context).size.width /
-                                                                              4,
-                                                                      "Failed",
-                                                                      "Please select receipt type"
-                                                                          .toString(),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .red,
-                                                                      colorText:
-                                                                          Colors
-                                                                              .white);
-                                                                } else {
-                                                                  print(
-                                                                      "The grand total value inside is else");
-                                                                  print((double.parse((model.total_with_out_vat)
-                                                                              .toString()) +
-                                                                          SimpleConvert.safeDouble((model.totalvat)
-                                                                              .toString()))
-                                                                      .toStringAsFixed(
-                                                                          2));
-                                                                  print(
-                                                                      receivedamountcontroller
-                                                                          .text);
-                                                                  if (receivedamountcontroller
-                                                                              .text ==
-                                                                          "" &&
-                                                                      selectedreceipttype[
-                                                                              'code'] !=
-                                                                          "CR") {
-                                                                    Get.snackbar(
-                                                                        maxWidth:
-                                                                            MediaQuery.of(context).size.width /
-                                                                                4,
-                                                                        "Failed",
-                                                                        "Please enter received amount."
-                                                                            .toString(),
-                                                                        backgroundColor:
-                                                                            Colors
-                                                                                .red,
-                                                                        colorText:
-                                                                            Colors.white);
-                                                                  } else {
-                                                                    print(
-                                                                        "This is the total price");
-                                                                    print(model
-                                                                        .total_with_out_vat);
-                                                                    if (selectedreceipttype["code"] ==
-                                                                            "CR" ||
-                                                                        SimpleConvert.safeDouble(receivedamountcontroller.text) ==
-                                                                            model.net_total) {
-                                                                      // Real saving start here
-                                                                      var received_amount = receivedamountcontroller
-                                                                          .text
-                                                                          .toString();
-                                                                      final dynamic
-                                                                          calculationresponse =
-                                                                          await API
-                                                                              .convertData(model.cart);
-                                                                      setState(
-                                                                          () {
-                                                                        mainloading =
-                                                                            true;
-                                                                      });
-                                                                      final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(
-                                                                          model
-                                                                              .orderId,
-                                                                          userId,
-                                                                          customerdetails[
-                                                                              "id"],
-                                                                          selectedContact
-                                                                              .toString(),
-                                                                          calculationresponse[
-                                                                              "items"],
-                                                                          selectedreceipttype[
-                                                                              "code"],
-                                                                          received_amount,
-                                                                          authorizationcodecontroller.text.isEmpty
-                                                                              ? ""
-                                                                              : authorizationcodecontroller
-                                                                                  .text,
-                                                                          widget
-                                                                              .token,
-                                                                          cash_amount
-                                                                              .toString(),
-                                                                          card_amount
-                                                                              .toString(),
-                                                                          footer_discount
-                                                                              .toString(),
-                                                                          model
-                                                                              .footer_discount_Pecentage
-                                                                              .toString(),
-                                                                          homeDelivery,
-                                                                          model
-                                                                              .round_off_amount
-                                                                              .toString(),
-                                                                          model
-                                                                              .net_total
-                                                                              .toString());
-                                                                      if (saveinvoiceresponse[
-                                                                              "status"] ==
-                                                                          "success") {
-                                                                        model
-                                                                            .removeAll();
-                                                                        selectedreceipttype =
-                                                                            {};
-                                                                        receivedamountcontroller.text =
-                                                                            "";
-                                                                        authorizationcodecontroller.text =
-                                                                            "";
-                                                                        barcodeController.text =
-                                                                            "";
-                                                                        barcodeController
-                                                                            .clear();
-                                                                        discountController
-                                                                            .clear();
-                                                                        footer_discount =
-                                                                            0;
-                                                                        model.footer_discount_Pecentage =
-                                                                            0;
-                                                                        model.footer_discount_text =
-                                                                            "0.00";
-
-                                                                        const PaperSize
-                                                                            paper =
-                                                                            PaperSize.mm80;
-                                                                        final profile =
-                                                                            await CapabilityProfile.load();
-                                                                        final printer = NetworkPrinter(
-                                                                            paper,
-                                                                            profile);
-                                                                        print(widget
-                                                                            .usbdevice);
-                                                                        if (widget
-                                                                            .usbdevice
-                                                                            .isNotEmpty) {
-                                                                          var footerDeatils =
-                                                                              {
-                                                                            "sub_total":
-                                                                                saveinvoiceresponse["sub_total"],
-                                                                            "vat":
-                                                                                saveinvoiceresponse["total_tax_amount"],
-                                                                            "total_without_vat":
-                                                                                saveinvoiceresponse["total_wo_vat"],
-                                                                            "discount":
-                                                                                saveinvoiceresponse["total_discount"],
-                                                                            "grand_total":
-                                                                                saveinvoiceresponse["grand_total"],
-                                                                            "recipt_type":
-                                                                                saveinvoiceresponse["receipt_type"],
-                                                                            "received_amt":
-                                                                                saveinvoiceresponse["received_amount"],
-                                                                            "delivery_at_location": homeDelivery
-                                                                                ? "Y"
-                                                                                : "N",
-                                                                            "emirates":
-                                                                                saveinvoiceresponse!["emirates"],
-                                                                            "round_off": (saveinvoiceresponse!["round_off"] == null)
-                                                                                ? "0"
-                                                                                : saveinvoiceresponse!["round_off"]
-                                                                          };
-                                                                          for (int i = 0;
-
-                                                                              /// sometimes user want 2 copies of invoice;
-                                                                              i < widget.numberInvoiceCopy;
-                                                                              i++) {
-                                                                            API.printInvoiceWindows(
-                                                                                BluetoothPrinter(deviceName: widget.usbdevice["devicename"], vendorId: widget.usbdevice["vendorid"], productId: widget.usbdevice["productid"]),
-                                                                                printer,
-                                                                                saveinvoiceresponse["items"],
-                                                                                imagebytes,
-                                                                                saveinvoiceresponse["invoice_no"].toString(),
-                                                                                saveinvoiceresponse["customer_name"],
-                                                                                saveinvoiceresponse["invoice_date"],
-                                                                                saveinvoiceresponse["warehouse_name"],
-                                                                                widget.userdetails["company_name"],
-                                                                                widget.userdetails["billing_address"],
-                                                                                widget.userdetails["genral_phno"],
-                                                                                saveinvoiceresponse["customer_phone"],
-                                                                                saveinvoiceresponse["sales_man"],
-                                                                                saveinvoiceresponse["receipt_type"],
-                                                                                saveinvoiceresponse["received_amount"],
-                                                                                widget.userdetails["trn_no"],
-                                                                                saveinvoiceresponse["total_amount"],
-                                                                                saveinvoiceresponse["total_discount"],
-                                                                                saveinvoiceresponse["total_wo_vat"],
-                                                                                saveinvoiceresponse["total_tax_amount"].toString(),
-                                                                                saveinvoiceresponse["grand_total"].toString(),
-                                                                                saveinvoiceresponse["customer_address"],
-                                                                                saveinvoiceresponse["received_cash_amount"].toString(),
-                                                                                saveinvoiceresponse["received_card_amount"].toString(),
-                                                                                saveinvoiceresponse["invoice_created_date_time"].toString(),
-                                                                                saveinvoiceresponse["invoice_id"].toString(),
-                                                                                imgrowdatabytes,
-                                                                                footerDeatils);
-                                                                          }
-                                                                        }
-                                                                        setState(
-                                                                            () {
-                                                                          mainloading =
-                                                                              false;
-                                                                        });
-                                                                        // setStateDialog(() {
-                                                                        //   dialogueloading = false;
-                                                                        // });
-                                                                        model.net_total =
-                                                                            0;
-                                                                        ClearAllData(
-                                                                            model);
-                                                                        pushWidgetWhileRemove(
-                                                                            newPage:
-                                                                                SuccessPage(
-                                                                              screen: HomePage(
-                                                                                token: widget.token,
-                                                                                usbdevice: widget.usbdevice,
-                                                                                userdetails: widget.userdetails,
-                                                                              ),
-                                                                            ),
-                                                                            context:
-                                                                                context);
-                                                                      } else {
-                                                                        setState(
-                                                                            () {
-                                                                          mainloading =
-                                                                              false;
-                                                                        });
-
-                                                                        Get.snackbar(
-                                                                            maxWidth: MediaQuery.of(context).size.width /
-                                                                                4,
-                                                                            "Failed",
-                                                                            saveinvoiceresponse["msg"]
-                                                                                .toString(),
-                                                                            backgroundColor:
-                                                                                Colors.red,
-                                                                            colorText: Colors.white);
-                                                                      }
-                                                                    } else {
-                                                                      Get.snackbar(
-                                                                          maxWidth: MediaQuery.of(context).size.width /
-                                                                              4,
-                                                                          "Failed",
-                                                                          "Please enter amount equal to grand total."
-                                                                              .toString(),
-                                                                          backgroundColor: Colors
-                                                                              .red,
-                                                                          colorText:
-                                                                              Colors.white);
-                                                                    }
-                                                                  }
-                                                                }
-                                                              }
-                                                            }
+                                                          onPressed: () {
+                                                            _saveInvoice(model);
                                                           },
                                                           elevation: 2.0,
                                                           fillColor:
@@ -5063,8 +4875,9 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
-                                                    (double.parse(model.subTotal
-                                                            .toString()))
+                                                    (SimpleConvert.safeDouble(
+                                                            model.subTotal
+                                                                .toString()))
                                                         .toStringAsFixed(2),
                                                     textAlign: TextAlign.start,
                                                     style: const TextStyle(
@@ -5089,9 +4902,9 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
-                                                    (double.parse(model
-                                                            .totaldiscount
-                                                            .toString()))
+                                                    (SimpleConvert.safeDouble(
+                                                            model.totaldiscount
+                                                                .toString()))
                                                         .toStringAsFixed(2),
                                                     textAlign: TextAlign.start,
                                                     style: const TextStyle(
@@ -5116,7 +4929,7 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
-                                                    (double.parse(model
+                                                    (SimpleConvert.safeDouble(model
                                                             .total_with_out_vat
                                                             .toString()))
                                                         .toStringAsFixed(2),
@@ -5143,8 +4956,9 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
-                                                    (double.parse(model.totalvat
-                                                            .toString()))
+                                                    (SimpleConvert.safeDouble(
+                                                            model.totalvat
+                                                                .toString()))
                                                         .toStringAsFixed(2),
                                                     textAlign: TextAlign.start,
                                                     style: const TextStyle(
@@ -5253,14 +5067,14 @@ class _HomePageState extends State<HomePage> {
                                                           : Container(
                                                               // color:
                                                               //     Colors.yellow,
-                                                              child: (double.parse(
+                                                              child: (SimpleConvert.safeDouble(
                                                                           (model.net_total)
                                                                               .toString())) <=
                                                                       0
                                                                   ? const SizedBox()
                                                                   : SimpleConvert.safeDouble(receivedamountcontroller
                                                                               .text) >=
-                                                                          (double.parse(
+                                                                          (SimpleConvert.safeDouble(
                                                                               (model.net_total).toString()))
                                                                       ? Container(
                                                                           width:
@@ -5286,7 +5100,7 @@ class _HomePageState extends State<HomePage> {
                                                                                 Padding(
                                                                                   padding: const EdgeInsets.symmetric(vertical: 5),
                                                                                   child: Text(
-                                                                                    (double.parse(receivedamountcontroller.text) - SimpleConvert.safeDouble((double.parse((model.net_total).toString())).toStringAsFixed(2))).toStringAsFixed(2),
+                                                                                    (SimpleConvert.safeDouble(receivedamountcontroller.text) - SimpleConvert.safeDouble((SimpleConvert.safeDouble((model.net_total).toString())).toStringAsFixed(2))).toStringAsFixed(2),
                                                                                     textAlign: TextAlign.start,
                                                                                     style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                                                                   ),
@@ -5335,6 +5149,262 @@ class _HomePageState extends State<HomePage> {
     customerContactList = defaultCustomerContactList;
     selectedContact = defaultselectedContact;
     selectedreceipttype = receipttype[0];
+    isDeliveryChargesAdded = false;
     model.removeAll();
+  }
+
+  void addDeliverycharges(CartModel model) async {
+    String deliveryId = "0";
+    var data = await getDeliveryCharges(widget.token);
+    if (data["status"] == "success") {
+      deliveryId = data["data"][0]["id"].toString();
+      bool deliveryItemExist = false;
+      model.cart.forEach((element) {
+        if (element.id == deliveryId) {
+          deliveryItemExist = true;
+        }
+      });
+      isDeliveryChargesAdded = true;
+      if (!deliveryItemExist) {
+        setState(() {
+          itemdetails = data["data"][0];
+          selectedunit = itemdetails["arr_units"][0];
+          array_units = itemdetails["arr_units"];
+          rateFocusnode.requestFocus();
+        });
+      } else {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Delivery charges already added.",
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      }
+    }
+  }
+
+  Future<bool> _showConfirmationDialog(BuildContext context) async {
+    bool result = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Devlivery charges"),
+          content: const Text(
+              "Would you like to add delivery charges to current invoices?"),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("No"),
+              onPressed: () {
+                isDeliveryChargesAdded = true;
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: const Text("Yes"),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+    return result;
+  }
+
+  _saveInvoice(CartModel model) async {
+    if (customerdetails.isEmpty) {
+      Get.snackbar(
+          maxWidth: MediaQuery.of(context).size.width / 4,
+          "Failed",
+          "Please select customer".toString(),
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    } else {
+      if (model.cart.isEmpty) {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Please select items".toString(),
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      } else {
+        if (receivedamountcontroller.text == "" &&
+            selectedreceipttype["code"] == "") {
+          Get.snackbar(
+              maxWidth: MediaQuery.of(context).size.width / 4,
+              "Failed",
+              "Please select receipt type".toString(),
+              backgroundColor: Colors.red,
+              colorText: Colors.white);
+        } else {
+          print("The grand total value inside is else");
+          print(
+              (SimpleConvert.safeDouble((model.total_with_out_vat).toString()) +
+                      SimpleConvert.safeDouble((model.totalvat).toString()))
+                  .toStringAsFixed(2));
+          print(receivedamountcontroller.text);
+          if (receivedamountcontroller.text == "" &&
+              selectedreceipttype['code'] != "CR") {
+            Get.snackbar(
+                maxWidth: MediaQuery.of(context).size.width / 4,
+                "Failed",
+                "Please enter received amount.".toString(),
+                backgroundColor: Colors.red,
+                colorText: Colors.white);
+          } else if (!isDeliveryChargesAdded) {
+            _showConfirmationDialog(context).then((bool value) {
+              if (value) {
+                addDeliverycharges(model);
+              } else {
+                isDeliveryChargesAdded = true;
+                _saveInvoice(model);
+              }
+            });
+          } else {
+            print("This is the total price");
+            print(model.total_with_out_vat);
+            if (selectedreceipttype["code"] == "CR" ||
+                SimpleConvert.safeDouble(receivedamountcontroller.text) ==
+                    model.net_total) {
+              // Real saving start here
+              var received_amount = receivedamountcontroller.text.toString();
+              final dynamic calculationresponse =
+                  await API.convertData(model.cart);
+              setState(() {
+                mainloading = true;
+              });
+              final dynamic saveinvoiceresponse = await API.saveInvoiceAPI(
+                  model.orderId,
+                  userId,
+                  customerdetails["id"],
+                  selectedContact.toString(),
+                  calculationresponse["items"],
+                  selectedreceipttype["code"],
+                  received_amount,
+                  authorizationcodecontroller.text.isEmpty
+                      ? ""
+                      : authorizationcodecontroller.text,
+                  widget.token,
+                  cash_amount.toString(),
+                  card_amount.toString(),
+                  footer_discount.toString(),
+                  model.footer_discount_Pecentage.toString(),
+                  homeDelivery,
+                  model.round_off_amount.toString(),
+                  model.net_total.toString());
+              if (saveinvoiceresponse["status"] == "success") {
+                model.removeAll();
+                selectedreceipttype = {};
+                receivedamountcontroller.text = "";
+                authorizationcodecontroller.text = "";
+                barcodeController.text = "";
+                barcodeController.clear();
+                discountController.clear();
+                footer_discount = 0;
+                model.footer_discount_Pecentage = 0;
+                model.footer_discount_text = "0.00";
+
+                const PaperSize paper = PaperSize.mm80;
+                final profile = await CapabilityProfile.load();
+                final printer = NetworkPrinter(paper, profile);
+                print(widget.usbdevice);
+                if (widget.usbdevice.isNotEmpty) {
+                  var footerDeatils = {
+                    "order_id": saveinvoiceresponse["order_id"],
+                    "sub_total": saveinvoiceresponse["sub_total"],
+                    "vat": saveinvoiceresponse["total_tax_amount"],
+                    "total_without_vat": saveinvoiceresponse["total_wo_vat"],
+                    "discount": saveinvoiceresponse["total_discount"],
+                    "grand_total": saveinvoiceresponse["grand_total"],
+                    "recipt_type": saveinvoiceresponse["receipt_type"],
+                    "received_amt": saveinvoiceresponse["received_amount"],
+                    "delivery_at_location": homeDelivery ? "Y" : "N",
+                    "emirates": saveinvoiceresponse!["emirates"],
+                    "round_off": (saveinvoiceresponse!["round_off"] == null)
+                        ? "0"
+                        : saveinvoiceresponse!["round_off"]
+                  };
+                  for (int i = 0;
+
+                      /// sometimes user want 2 copies of invoice;
+                      i < widget.numberInvoiceCopy;
+                      i++) {
+                    API.printInvoiceWindows(
+                        BluetoothPrinter(
+                            deviceName: widget.usbdevice["devicename"],
+                            vendorId: widget.usbdevice["vendorid"],
+                            productId: widget.usbdevice["productid"]),
+                        printer,
+                        saveinvoiceresponse["items"],
+                        imagebytes,
+                        saveinvoiceresponse["invoice_no"].toString(),
+                        saveinvoiceresponse["customer_name"],
+                        saveinvoiceresponse["invoice_date"],
+                        saveinvoiceresponse["warehouse_name"],
+                        widget.userdetails["company_name"],
+                        widget.userdetails["billing_address"],
+                        widget.userdetails["genral_phno"],
+                        saveinvoiceresponse["customer_phone"],
+                        saveinvoiceresponse["sales_man"],
+                        saveinvoiceresponse["receipt_type"],
+                        saveinvoiceresponse["received_amount"],
+                        widget.userdetails["trn_no"],
+                        saveinvoiceresponse["total_amount"],
+                        saveinvoiceresponse["total_discount"],
+                        saveinvoiceresponse["total_wo_vat"],
+                        saveinvoiceresponse["total_tax_amount"].toString(),
+                        saveinvoiceresponse["grand_total"].toString(),
+                        saveinvoiceresponse["customer_address"],
+                        saveinvoiceresponse["received_cash_amount"].toString(),
+                        saveinvoiceresponse["received_card_amount"].toString(),
+                        saveinvoiceresponse["invoice_created_date_time"]
+                            .toString(),
+                        saveinvoiceresponse["invoice_id"].toString(),
+                        imgrowdatabytes,
+                        footerDeatils);
+                  }
+                }
+                setState(() {
+                  mainloading = false;
+                });
+                // setStateDialog(() {
+                //   dialogueloading = false;
+                // });
+                model.net_total = 0;
+                ClearAllData(model);
+                pushWidgetWhileRemove(
+                    newPage: SuccessPage(
+                      screen: HomePage(
+                        token: widget.token,
+                        usbdevice: widget.usbdevice,
+                        userdetails: widget.userdetails,
+                      ),
+                    ),
+                    context: context);
+              } else {
+                setState(() {
+                  mainloading = false;
+                });
+
+                Get.snackbar(
+                    maxWidth: MediaQuery.of(context).size.width / 4,
+                    "Failed",
+                    saveinvoiceresponse["msg"].toString(),
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white);
+              }
+            } else {
+              Get.snackbar(
+                  maxWidth: MediaQuery.of(context).size.width / 4,
+                  "Failed",
+                  "Please enter amount equal to grand total.".toString(),
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white);
+            }
+          }
+        }
+      }
+    }
   }
 }

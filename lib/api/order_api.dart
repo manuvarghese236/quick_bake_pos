@@ -75,6 +75,7 @@ class ApiOrder {
         "discount_amount": data[i].discountvalue,
         "discount_percentage": data[i].discount_percentage,
         "grand_total": data[i].totalafterdiscount,
+        "inventory_item_type": data[i].inventory_item_type,
         "tax_vat_amount":
             SimpleConvert.safeDouble(data[i].vatafterdiscount.toString()),
         "net_per_item":

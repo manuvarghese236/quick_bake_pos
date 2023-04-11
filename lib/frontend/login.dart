@@ -21,7 +21,7 @@ class _LoginState extends State<Login> {
   String username = 'rakadmnin';
   String password = 'demo';
   bool _securePassword = true;
-
+  FocusNode focusNodePassword = FocusNode();
   //load variable
   bool load = false;
 
@@ -149,6 +149,7 @@ class _LoginState extends State<Login> {
                                     const EdgeInsets.only(left: 20, right: 20),
                                 width: MediaQuery.of(context).size.width / 2.5,
                                 child: TextFormField(
+                                  textInputAction: TextInputAction.next,
                                   cursorColor: Colors.green,
                                   inputFormatters: [
                                     LengthLimitingTextInputFormatter(50),
@@ -220,52 +221,63 @@ class _LoginState extends State<Login> {
                                 margin:
                                     const EdgeInsets.only(left: 20, right: 20),
                                 width: MediaQuery.of(context).size.width / 2.5,
-                                child: TextFormField(
-                                  cursorColor: Colors.green,
-                                  style: TextStyle(color: Colors.grey),
-                                  decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor:
-                                          Color.fromRGBO(248, 248, 253, 1),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(5.0),
-                                        borderSide: BorderSide(
-                                          color: Colors.black,
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(5.0),
-                                        borderSide: const BorderSide(
-                                          color: Colors.green,
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                      hintStyle: const TextStyle(
-                                          fontFamily: 'Montserrat',
-                                          color:
-                                              Color.fromRGBO(181, 184, 203, 1),
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 14),
-                                      contentPadding: const EdgeInsets.fromLTRB(
-                                          20.0, 15.0, 20.0, 15.0),
-                                      suffixIcon: IconButton(
-                                        onPressed: showHide,
-                                        icon: iconDisplay(_securePassword),
-                                      ),
-                                      hintText: "Enter Password",
-                                      // hintText: 'demo',
-                                      border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8.0))),
-                                  validator: (val) =>
-                                      val!.length < 3 ? 'Enter Password' : null,
-                                  obscureText: _securePassword,
-                                  onChanged: (val) {
-                                    setState(() => password = (val));
+                                child: RawKeyboardListener(
+                                  onKey: (event) {
+                                    if (event.isKeyPressed(
+                                        LogicalKeyboardKey.enter)) {
+                                      doLogin();
+                                    }
                                   },
+                                  focusNode: focusNodePassword,
+                                  child: TextFormField(
+                                    cursorColor: Colors.green,
+                                    style: TextStyle(color: Colors.grey),
+                                    decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor:
+                                            Color.fromRGBO(248, 248, 253, 1),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(5.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.black,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(5.0),
+                                          borderSide: const BorderSide(
+                                            color: Colors.green,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        hintStyle: const TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            color: Color.fromRGBO(
+                                                181, 184, 203, 1),
+                                            fontWeight: FontWeight.w400,
+                                            fontSize: 14),
+                                        contentPadding:
+                                            const EdgeInsets.fromLTRB(
+                                                20.0, 15.0, 20.0, 15.0),
+                                        suffixIcon: IconButton(
+                                          onPressed: showHide,
+                                          icon: iconDisplay(_securePassword),
+                                        ),
+                                        hintText: "Enter Password",
+                                        // hintText: 'demo',
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8.0))),
+                                    validator: (val) => val!.length < 3
+                                        ? 'Enter Password'
+                                        : null,
+                                    obscureText: _securePassword,
+                                    onChanged: (val) {
+                                      setState(() => password = (val));
+                                    },
+                                  ),
                                 ),
                               ),
                               Container(
@@ -275,109 +287,8 @@ class _LoginState extends State<Login> {
                                     Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: InkWell(
-                                          onTap: () async {
-                                            if (_formKey.currentState!
-                                                .validate()) {
-                                              print(
-                                                  "------------------------- LOGIN BUTTON --------------------------");
-                                              setState(() {
-                                                load = true;
-                                              });
-                                              final dynamic userloginresponse =
-                                                  //"DEHNEE"
-                                                  await API.loginAPI(API.CODE,
-                                                      username, password);
-                                              if (userloginresponse['status'] ==
-                                                  'success') {
-                                                final dynamic prefresult = await API.addPrefferenceUserDetails(
-                                                    userloginresponse['data']
-                                                        ['user_id'],
-                                                    userloginresponse['data']
-                                                        ['name'],
-                                                    userloginresponse['data']
-                                                        ['_token'],
-                                                    userloginresponse["data"]
-                                                        ["company_name"],
-                                                    userloginresponse["data"]
-                                                        ["billing_address"],
-                                                    userloginresponse["data"]
-                                                        ["genral_phno"],
-                                                    userloginresponse["data"]
-                                                        ["default_customer_id"],
-                                                    userloginresponse["data"]
-                                                        ["trn_no"],
-                                                    API.imgurl +
-                                                        userloginresponse["data"]
-                                                            ["company_logo"],
-                                                    userloginresponse["data"]
-                                                            ["warehouse_id"]
-                                                        .toString(),
-                                                    userloginresponse["data"]
-                                                            ["warehouse_name"]
-                                                        .toString(),
-                                                    userloginresponse['data'][
-                                                            'master_company_id']
-                                                        .toString(),
-                                                    userloginresponse['data']
-                                                            ['barcodenabled']
-                                                        .toString());
-                                                if (prefresult['status'] ==
-                                                    'success') {
-                                                  print("Manu---- test");
-                                                  pushWidgetWhileRemove(
-                                                      newPage:
-                                                          const dashboard(),
-                                                      context: context);
-                                                  Get.snackbar("Success",
-                                                      'User Authenticated',
-                                                      maxWidth:
-                                                          MediaQuery.of(context)
-                                                                  .size
-                                                                  .width /
-                                                              4,
-                                                      backgroundColor:
-                                                          Colors.green,
-                                                      colorText: Colors.white);
-                                                } else {
-                                                  setState(() {
-                                                    load = false;
-                                                  });
-                                                  Get.snackbar("Failed",
-                                                      "User cache miss",
-                                                      maxWidth:
-                                                          MediaQuery.of(context)
-                                                                  .size
-                                                                  .width /
-                                                              4,
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                      colorText: Colors.white);
-                                                }
-                                              } else {
-                                                setState(() {
-                                                  load = false;
-                                                });
-                                                Get.snackbar("Failed",
-                                                    'User Authentication Failed',
-                                                    maxWidth:
-                                                        MediaQuery.of(context)
-                                                                .size
-                                                                .width /
-                                                            4,
-                                                    backgroundColor: Colors.red,
-                                                    colorText: Colors.white);
-                                              }
-                                            } else {
-                                              Get.snackbar("Failed",
-                                                  'Please Fill Correct Details',
-                                                  backgroundColor: Colors.red,
-                                                  maxWidth:
-                                                      MediaQuery.of(context)
-                                                              .size
-                                                              .width /
-                                                          4,
-                                                  colorText: Colors.white);
-                                            }
+                                          onTap: () {
+                                            doLogin();
                                           },
                                           child: Container(
                                             decoration: BoxDecoration(
@@ -423,5 +334,63 @@ class _LoginState extends State<Login> {
               ),
             ),
     );
+  }
+
+  doLogin() async {
+    if (_formKey.currentState!.validate()) {
+      print(
+          "------------------------- LOGIN BUTTON --------------------------");
+      setState(() {
+        load = true;
+      });
+      final dynamic userloginresponse =
+          //"DEHNEE"
+          await API.loginAPI(API.CODE, username, password);
+      if (userloginresponse['status'] == 'success') {
+        final dynamic prefresult = await API.addPrefferenceUserDetails(
+            userloginresponse['data']['user_id'],
+            userloginresponse['data']['name'],
+            userloginresponse['data']['_token'],
+            userloginresponse["data"]["company_name"],
+            userloginresponse["data"]["billing_address"],
+            userloginresponse["data"]["genral_phno"],
+            userloginresponse["data"]["default_customer_id"],
+            userloginresponse["data"]["trn_no"],
+            API.imgurl + userloginresponse["data"]["company_logo"],
+            userloginresponse["data"]["warehouse_id"].toString(),
+            userloginresponse["data"]["warehouse_name"].toString(),
+            userloginresponse['data']['master_company_id'].toString(),
+            userloginresponse['data']['barcodenabled'].toString());
+        if (prefresult['status'] == 'success') {
+          print("Manu---- test");
+          pushWidgetWhileRemove(newPage: const dashboard(), context: context);
+          Get.snackbar("Success", 'User Authenticated',
+              maxWidth: MediaQuery.of(context).size.width / 4,
+              backgroundColor: Colors.green,
+              colorText: Colors.white);
+        } else {
+          setState(() {
+            load = false;
+          });
+          Get.snackbar("Failed", "User cache miss",
+              maxWidth: MediaQuery.of(context).size.width / 4,
+              backgroundColor: Colors.red,
+              colorText: Colors.white);
+        }
+      } else {
+        setState(() {
+          load = false;
+        });
+        Get.snackbar("Failed", 'User Authentication Failed',
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      }
+    } else {
+      Get.snackbar("Failed", 'Please Fill Correct Details',
+          backgroundColor: Colors.red,
+          maxWidth: MediaQuery.of(context).size.width / 4,
+          colorText: Colors.white);
+    }
   }
 }

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image/image.dart' as im;
@@ -24,7 +26,10 @@ import 'package:windowspos/models/itemmodel.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:windowspos/models/printermodel.dart';
 
+import '../api/delivery_model.dart';
 import '../api/order_api.dart';
+import '../delivery_charge.dart';
+import '../formatter.dart';
 import '../loading_screen.dart';
 
 class NewOrder extends StatefulWidget {
@@ -33,6 +38,7 @@ class NewOrder extends StatefulWidget {
   final String token;
   final Map<String, dynamic> userdetails;
   final String? selectedcustomerid;
+
   const NewOrder(
       {Key? key,
       required this.token,
@@ -52,16 +58,20 @@ class _NewOrderState extends State<NewOrder> {
   /// saving order
   bool isLoading = false;
 
+  bool isDeliveryChargesAdded = false;
+
   /// TextEditingController
   TextEditingController receivedamountcontroller = TextEditingController();
   TextEditingController authorizationcodecontroller = TextEditingController();
   TextEditingController barcodeController = TextEditingController();
   TextEditingController discountController = TextEditingController();
+  TextEditingController dialogBoxDeliveryController = TextEditingController();
 
   FocusNode linediscountfocusnode = FocusNode();
   FocusNode footerDiscountNode = FocusNode();
   FocusNode barcodeFocusNode = FocusNode();
   FocusNode itemFocusnode = FocusNode();
+  FocusNode rateFocusnode = FocusNode();
   var customerContactList = [];
   String? selectedContact = null;
   CustomerContact? selectedCustomerContact;
@@ -79,6 +89,7 @@ class _NewOrderState extends State<NewOrder> {
   Uint8List? imgdatabytes;
   Uint8List? imgrowdatabytes;
 
+  var deliveryCharges;
   Future getSetting() async {
     try {
       SharedPreferences blueskydehneepos =
@@ -346,8 +357,10 @@ class _NewOrderState extends State<NewOrder> {
           itemdetails["id"],
           model.cart,
           itemdetails["quantity"].toString(),
-          itemdetails["available_qty"].toString(),
-          itemdetails["inventory_item_type"].toString());
+          selectedunit["quantity"].toString(),
+          itemdetails["inventory_item_type"].toString(),
+          selectedunit["id"].toString(),
+          selectedunit["unit_factor"].toString());
       if (allowNegativeQty || hasQtyInStock) {
         ///
         ///
@@ -361,10 +374,12 @@ class _NewOrderState extends State<NewOrder> {
             backgroundColor: Colors.red,
             colorText: Colors.white);
       } */
-        if (model.checkItems(itemdetails["id"], model.cart)) {
-          var product_id = itemdetails["id"];
+        if (model.checkItems(
+            itemdetails["id"], selectedunit["id"].toString(), model.cart)) {
+          var productId = itemdetails["id"];
           model.cart.forEach((element) {
-            if (element.id == product_id) {
+            if (element.id == productId &&
+                element.unit_id == selectedunit["id"].toString()) {
               double quantity = SimpleConvert.safeDouble(element.quantity);
 
               double newQty =
@@ -390,6 +405,7 @@ class _NewOrderState extends State<NewOrder> {
               warehouseid: itemdetails["warehouse_id"],
               unit_name: selectedunit["unit_name"].toString(),
               unit_id: selectedunit["id"].toString(),
+              unit_factor: selectedunit["unit_factor"].toString(),
               arr_units: itemdetails["arr_units"],
               tax_code: itemdetails["tax_code"],
               discount:
@@ -410,6 +426,7 @@ class _NewOrderState extends State<NewOrder> {
               barcode: itemdetails["bar_code"].toString(),
               inventory_item_type:
                   itemdetails["inventory_item_type"].toString(),
+              default_unit_id: itemdetails["default_unit_id"].toString(),
             ),
           );
           model.calculateTotalRate();
@@ -447,6 +464,7 @@ class _NewOrderState extends State<NewOrder> {
   clearData() {
     itemdetails = {};
     customerdetails = {};
+    isDeliveryChargesAdded = false;
   }
 
   Future<bool> _onWillPop(CartModel model) async {
@@ -1693,16 +1711,42 @@ class _NewOrderState extends State<NewOrder> {
                                                               itemslist.barcode,
                                                           "inventory_item_type":
                                                               itemslist
-                                                                  .inventory_item_type
+                                                                  .inventory_item_type,
+                                                          "default_unit_id":
+                                                              itemslist
+                                                                  .default_unit_id
                                                         };
                                                         setState(() {
                                                           itemdetails = data;
+                                                          String defaultUnitId =
+                                                              itemdetails[
+                                                                      "default_unit_id"]
+                                                                  .toString();
                                                           selectedunit =
                                                               itemslist
                                                                   .arr_units[0];
+                                                          itemdetails["rate"] =
+                                                              itemslist
+                                                                  .arr_units[0][
+                                                                      "unit_price"]
+                                                                  .toString();
                                                           array_units =
                                                               itemslist
                                                                   .arr_units;
+                                                          for (var element
+                                                              in array_units) {
+                                                            if (element["id"]
+                                                                    .toString() ==
+                                                                defaultUnitId) {
+                                                              selectedunit =
+                                                                  element;
+                                                              itemdetails[
+                                                                  "rate"] = element[
+                                                                      "unit_price"]
+                                                                  .toString();
+                                                              break;
+                                                            }
+                                                          }
                                                           qtyfocusnode
                                                               .requestFocus();
                                                         });
@@ -1712,102 +1756,6 @@ class _NewOrderState extends State<NewOrder> {
                                                 ),
                                     ],
                                   ),
-                                  itemdetails.isNotEmpty
-                                      ? Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceAround,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Rate".toUpperCase(),
-                                                  textAlign: TextAlign.start,
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontFamily: 'Montserrat'),
-                                                ),
-                                              ],
-                                            ),
-                                            Container(
-                                              width: MediaQuery.of(context)
-                                                      .size
-                                                      .width /
-                                                  13,
-                                              height: 44,
-                                              // color: Colors.red,
-                                              child: TextFormField(
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                initialValue:
-                                                    itemdetails["rate"],
-                                                style: TextStyle(
-                                                    color: API.textcolor,
-                                                    fontWeight:
-                                                        FontWeight.w400),
-                                                decoration: InputDecoration(
-                                                    filled: true,
-                                                    fillColor:
-                                                        const Color.fromRGBO(
-                                                            248, 248, 253, 1),
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide: BorderSide(
-                                                        color: API.bordercolor,
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                        color: Colors.green,
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    hintStyle: const TextStyle(
-                                                        fontFamily:
-                                                            'Montserrat',
-                                                        color: Color.fromRGBO(
-                                                            181, 184, 203, 1),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontSize: 14),
-                                                    contentPadding:
-                                                        const EdgeInsets.fromLTRB(
-                                                            10.0,
-                                                            10.0,
-                                                            10.0,
-                                                            10.0),
-                                                    // ignore: unnecessary_null_comparison
-                                                    hintText: 'Rate',
-                                                    border: OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4.0))),
-                                                onChanged: (val) {
-                                                  setState(() {
-                                                    itemdetails["rate"] = val;
-                                                  });
-                                                  print(itemdetails);
-                                                },
-                                              ),
-                                            )
-                                          ],
-                                        )
-                                      : const SizedBox(),
                                   itemdetails.isNotEmpty
                                       ? Column(
                                           crossAxisAlignment:
@@ -1937,6 +1885,115 @@ class _NewOrderState extends State<NewOrder> {
                                                   MainAxisAlignment.start,
                                               children: [
                                                 Text(
+                                                  "Rate".toUpperCase(),
+                                                  textAlign: TextAlign.start,
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontFamily: 'Montserrat'),
+                                                ),
+                                              ],
+                                            ),
+                                            Container(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width /
+                                                  13,
+                                              height: 44,
+                                              // color: Colors.red,
+                                              child: CallbackShortcuts(
+                                                bindings: {
+                                                  const SingleActivator(
+                                                      LogicalKeyboardKey
+                                                          .enter): () =>
+                                                      addProducttoTable(model),
+                                                },
+                                                child: TextFormField(
+                                                  key: Key(itemdetails["rate"]
+                                                      .toString()),
+                                                  focusNode: rateFocusnode,
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  initialValue:
+                                                      itemdetails["rate"]
+                                                          .toString(),
+                                                  style: TextStyle(
+                                                      color: API.textcolor,
+                                                      fontWeight:
+                                                          FontWeight.w400),
+                                                  decoration: InputDecoration(
+                                                      filled: true,
+                                                      fillColor:
+                                                          const Color.fromRGBO(
+                                                              248, 248, 253, 1),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4.0),
+                                                        borderSide: BorderSide(
+                                                          color:
+                                                              API.bordercolor,
+                                                          width: 1.0,
+                                                        ),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4.0),
+                                                        borderSide:
+                                                            const BorderSide(
+                                                          color: Colors.green,
+                                                          width: 1.0,
+                                                        ),
+                                                      ),
+                                                      hintStyle: const TextStyle(
+                                                          fontFamily:
+                                                              'Montserrat',
+                                                          color: Color.fromRGBO(
+                                                              181, 184, 203, 1),
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontSize: 14),
+                                                      contentPadding:
+                                                          const EdgeInsets.fromLTRB(
+                                                              10.0,
+                                                              10.0,
+                                                              10.0,
+                                                              10.0),
+                                                      // ignore: unnecessary_null_comparison
+                                                      hintText: 'Rate',
+                                                      border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4.0))),
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      itemdetails["rate"] = val;
+                                                    });
+                                                    print(itemdetails);
+                                                  },
+                                                ),
+                                              ),
+                                            )
+                                          ],
+                                        )
+                                      : const SizedBox(),
+                                  itemdetails.isNotEmpty
+                                      ? Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              children: [
+                                                Text(
                                                   "Unit".toUpperCase(),
                                                   textAlign: TextAlign.start,
                                                   style: const TextStyle(
@@ -2022,8 +2079,12 @@ class _NewOrderState extends State<NewOrder> {
                                                     isDense: true,
                                                     onChanged: (data) async {
                                                       setState(() {
+                                                        itemdetails["rate"] =
+                                                            data["unit_price"];
                                                         selectedunit = data;
                                                       });
+                                                      rateFocusnode
+                                                          .requestFocus();
                                                     },
                                                     items: array_units
                                                         .map((value) {
@@ -2286,8 +2347,8 @@ class _NewOrderState extends State<NewOrder> {
                                                                   .waiting) {
                                                             return Center(
                                                               child: Row(
-                                                                children: [
-                                                                  const CircularProgressIndicator(
+                                                                children: const [
+                                                                  CircularProgressIndicator(
                                                                     color: Colors
                                                                         .white,
                                                                     strokeWidth:
@@ -2307,8 +2368,8 @@ class _NewOrderState extends State<NewOrder> {
                                                                 .hasError) {
                                                               return Center(
                                                                 child: Row(
-                                                                  children: [
-                                                                    const Icon(
+                                                                  children: const [
+                                                                    Icon(
                                                                       Icons
                                                                           .warning,
                                                                       color: Colors
@@ -2461,7 +2522,7 @@ class _NewOrderState extends State<NewOrder> {
                                                                   1.8 /
                                                                   8,
                                                               child: const Text(
-                                                                "Rate",
+                                                                "Qty",
                                                                 textAlign:
                                                                     TextAlign
                                                                         .start,
@@ -2485,7 +2546,7 @@ class _NewOrderState extends State<NewOrder> {
                                                                   1.8 /
                                                                   8,
                                                               child: const Text(
-                                                                "Qty",
+                                                                "Rate",
                                                                 textAlign:
                                                                     TextAlign
                                                                         .start,
@@ -2501,6 +2562,7 @@ class _NewOrderState extends State<NewOrder> {
                                                                         'Montserrat'),
                                                               ),
                                                             ),
+
                                                             Container(
                                                               width: MediaQuery.of(
                                                                           context)
@@ -2763,12 +2825,12 @@ class _NewOrderState extends State<NewOrder> {
                                                                           1.8 /
                                                                           8,
                                                                       // color: Colors
-                                                                      //     .yellow,
+                                                                      //     .red,
                                                                       child:
                                                                           Text(
                                                                         model
                                                                             .cart[index]
-                                                                            .rate,
+                                                                            .quantity,
                                                                         textAlign:
                                                                             TextAlign.start,
                                                                         style: const TextStyle(
@@ -2788,12 +2850,12 @@ class _NewOrderState extends State<NewOrder> {
                                                                           1.8 /
                                                                           8,
                                                                       // color: Colors
-                                                                      //     .red,
+                                                                      //     .yellow,
                                                                       child:
                                                                           Text(
                                                                         model
                                                                             .cart[index]
-                                                                            .quantity,
+                                                                            .rate,
                                                                         textAlign:
                                                                             TextAlign.start,
                                                                         style: const TextStyle(
@@ -2806,6 +2868,7 @@ class _NewOrderState extends State<NewOrder> {
                                                                             fontFamily: 'Montserrat'),
                                                                       ),
                                                                     ),
+
                                                                     Container(
                                                                       width: MediaQuery.of(context)
                                                                               .size
@@ -2983,7 +3046,8 @@ class _NewOrderState extends State<NewOrder> {
                                                                       IconButton(
                                                                           onPressed:
                                                                               () {
-                                                                            model.removeProduct(model.cart[index].id);
+                                                                            model.removeProduct(model.cart[index].id,
+                                                                                model.cart[index].unit_id);
                                                                             model.calculateTotalRate();
                                                                             if (model.LineDiscountEnabled) {
                                                                               discountController.text = model.footer_discount.toString();
@@ -3652,14 +3716,33 @@ class _NewOrderState extends State<NewOrder> {
                                                                 setState(() {
                                                                   itemdetails =
                                                                       data;
-                                                                  selectedunit =
-                                                                      searchresponse[
-                                                                              0]
-                                                                          .arr_units[0];
+                                                                  String
+                                                                      defaultUnitId =
+                                                                      data["default_unit_id"]
+                                                                          .toString();
+                                                                  int selectedunitIndex =
+                                                                      0;
                                                                   array_units =
                                                                       searchresponse[
                                                                               0]
                                                                           .arr_units;
+                                                                  for (var i =
+                                                                          0;
+                                                                      i <
+                                                                          array_units
+                                                                              .length;
+                                                                      i++) {
+                                                                    if (array_units[i]
+                                                                            .toString() ==
+                                                                        defaultUnitId) {
+                                                                      selectedunitIndex =
+                                                                          i;
+                                                                    }
+                                                                  }
+                                                                  selectedunit =
+                                                                      searchresponse[0]
+                                                                              .arr_units[
+                                                                          selectedunitIndex];
                                                                 });
                                                                 print(
                                                                     itemdetails);
@@ -3746,9 +3829,55 @@ class _NewOrderState extends State<NewOrder> {
                                                                     FontWeight
                                                                         .w500),
                                                           ),
-                                                        ),
+                                                        )
                                                       ],
                                                     ),
+                                                    Column(
+                                                      children: [
+                                                        RawMaterialButton(
+                                                          onPressed: () {
+                                                            addDeliverycharges(
+                                                                model);
+                                                          },
+                                                          elevation: 2.0,
+                                                          fillColor:
+                                                              Colors.amber,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(5.0),
+                                                          shape: const CircleBorder(
+                                                              side: BorderSide(
+                                                                  color: Colors
+                                                                      .white)),
+                                                          child: const FaIcon(
+                                                            FontAwesomeIcons
+                                                                .shippingFast,
+                                                            color: Colors.white,
+                                                            size: 14,
+                                                          ),
+                                                        ),
+                                                        const Padding(
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                                  vertical: 2),
+                                                          child: Text(
+                                                            "Add Delivery charges",
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                                fontFamily:
+                                                                    'Montserrat',
+                                                                color: Colors
+                                                                    .black,
+                                                                fontSize: 10,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold),
+                                                          ),
+                                                        )
+                                                      ],
+                                                    )
                                                   ],
                                                 ),
                                                 Row(
@@ -3758,249 +3887,8 @@ class _NewOrderState extends State<NewOrder> {
                                                     Column(
                                                       children: [
                                                         RawMaterialButton(
-                                                          onPressed: () async {
-                                                            if (customerdetails
-                                                                .isEmpty) {
-                                                              Get.snackbar(
-                                                                  maxWidth: MediaQuery.of(
-                                                                              context)
-                                                                          .size
-                                                                          .width /
-                                                                      4,
-                                                                  "Failed",
-                                                                  "Please select customer"
-                                                                      .toString(),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                  colorText:
-                                                                      Colors
-                                                                          .white);
-                                                            } else {
-                                                              if (model.cart
-                                                                  .isEmpty) {
-                                                                Get.snackbar(
-                                                                    maxWidth: MediaQuery.of(
-                                                                                context)
-                                                                            .size
-                                                                            .width /
-                                                                        4,
-                                                                    "Failed",
-                                                                    "Please select items"
-                                                                        .toString(),
-                                                                    backgroundColor:
-                                                                        Colors
-                                                                            .red,
-                                                                    colorText:
-                                                                        Colors
-                                                                            .white);
-                                                              } else {
-                                                                print(
-                                                                    "This is the total price");
-                                                                print(model
-                                                                    .total_with_out_vat);
-
-                                                                // Real saving start here
-                                                                var received_amount =
-                                                                    receivedamountcontroller
-                                                                        .text
-                                                                        .toString();
-                                                                final dynamic
-                                                                    calculationresponse =
-                                                                    await ApiOrder
-                                                                        .convertData(
-                                                                            model.cart);
-                                                                setState(() {
-                                                                  mainloading =
-                                                                      true;
-                                                                });
-                                                                final dynamic saveinvoiceresponse = await ApiOrder.save(
-                                                                    userId,
-                                                                    customerdetails[
-                                                                        "id"],
-                                                                    selectedContact
-                                                                        .toString(),
-                                                                    calculationresponse[
-                                                                        "items"],
-                                                                    widget
-                                                                        .token,
-                                                                    footer_discount
-                                                                        .toString(),
-                                                                    model
-                                                                        .footer_discount_Pecentage
-                                                                        .toString(),
-                                                                    homeDelivery,
-                                                                    model
-                                                                        .round_off_amount
-                                                                        .toString(),
-                                                                    model
-                                                                        .net_total
-                                                                        .toString());
-                                                                if (saveinvoiceresponse[
-                                                                        "status"] ==
-                                                                    "success") {
-                                                                  model
-                                                                      .removeAll();
-                                                                  selectedreceipttype =
-                                                                      {};
-                                                                  receivedamountcontroller
-                                                                      .text = "";
-                                                                  authorizationcodecontroller
-                                                                      .text = "";
-                                                                  barcodeController
-                                                                      .text = "";
-                                                                  barcodeController
-                                                                      .clear();
-                                                                  discountController
-                                                                      .clear();
-                                                                  footer_discount =
-                                                                      0;
-                                                                  model.footer_discount_Pecentage =
-                                                                      0;
-                                                                  model.footer_discount_text =
-                                                                      "0.00";
-
-                                                                  const PaperSize
-                                                                      paper =
-                                                                      PaperSize
-                                                                          .mm80;
-                                                                  final profile =
-                                                                      await CapabilityProfile
-                                                                          .load();
-                                                                  final printer =
-                                                                      NetworkPrinter(
-                                                                          paper,
-                                                                          profile);
-                                                                  print(widget
-                                                                      .usbdevice);
-                                                                  if (widget
-                                                                          .usbdevice
-                                                                          .isNotEmpty ||
-                                                                      true) {
-                                                                    var footerDeatils =
-                                                                        {
-                                                                      "sub_total":
-                                                                          saveinvoiceresponse["sub_total"]
-                                                                              .toString(),
-                                                                      "vat": saveinvoiceresponse[
-                                                                          "total_tax_amount"],
-                                                                      "total_without_vat":
-                                                                          saveinvoiceresponse[
-                                                                              "total_wo_vat"],
-                                                                      "discount":
-                                                                          saveinvoiceresponse["total_discount"]
-                                                                              .toString(),
-                                                                      "grand_total":
-                                                                          saveinvoiceresponse[
-                                                                              "grand_total"],
-                                                                      "round_off": (saveinvoiceresponse["round_off"] ==
-                                                                              null)
-                                                                          ? "0"
-                                                                          : saveinvoiceresponse[
-                                                                              "round_off"],
-                                                                      "emirates":
-                                                                          saveinvoiceresponse![
-                                                                              "emirates"],
-                                                                    };
-                                                                    for (int i =
-                                                                            0;
-
-                                                                        /// sometimes user want 2 copies of invoice;
-                                                                        i < widget.numberInvoiceCopy;
-                                                                        i++) {
-                                                                      OrderListApi.printOrderWindows(
-                                                                          BluetoothPrinter(
-                                                                              deviceName: widget.usbdevice[
-                                                                                  "devicename"],
-                                                                              vendorId: widget.usbdevice[
-                                                                                  "vendorid"],
-                                                                              productId: widget.usbdevice[
-                                                                                  "productid"]),
-                                                                          printer,
-                                                                          saveinvoiceresponse[
-                                                                              "items"],
-                                                                          imagebytes,
-                                                                          saveinvoiceresponse["order_id"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse[
-                                                                              "customer_name"],
-                                                                          saveinvoiceresponse[
-                                                                              "order_date"],
-                                                                          saveinvoiceresponse[
-                                                                              "warehouse_name"],
-                                                                          widget.userdetails[
-                                                                              "company_name"],
-                                                                          widget.userdetails[
-                                                                              "billing_address"],
-                                                                          widget.userdetails[
-                                                                              "genral_phno"],
-                                                                          saveinvoiceresponse[
-                                                                              "customer_phone"],
-                                                                          saveinvoiceresponse[
-                                                                              "sales_man"],
-                                                                          widget.userdetails[
-                                                                              "trn_no"],
-                                                                          saveinvoiceresponse[
-                                                                              "total_amount"],
-                                                                          saveinvoiceresponse[
-                                                                              "total_discount"],
-                                                                          saveinvoiceresponse[
-                                                                              "total_wo_vat"],
-                                                                          saveinvoiceresponse["total_tax_amount"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse["grand_total"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse[
-                                                                              "customer_address"],
-                                                                          saveinvoiceresponse["order_created_date_time"]
-                                                                              .toString(),
-                                                                          saveinvoiceresponse["order_id"]
-                                                                              .toString(),
-                                                                          imgrowdatabytes,
-                                                                          footerDeatils);
-                                                                    }
-                                                                  }
-                                                                  // setState(() {
-                                                                  //   loading = false;
-                                                                  // });
-                                                                  // setStateDialog(() {
-                                                                  //   dialogueloading = false;
-                                                                  // });
-                                                                  setState(() {
-                                                                    mainloading =
-                                                                        false;
-                                                                  });
-                                                                  model.net_total =
-                                                                      0;
-                                                                  pushWidgetWhileRemove(
-                                                                      newPage: const SuccessPage(
-                                                                          screen:
-                                                                              dashboard()),
-                                                                      context:
-                                                                          context);
-                                                                } else {
-                                                                  setState(() {
-                                                                    mainloading =
-                                                                        false;
-                                                                  });
-
-                                                                  Get.snackbar(
-                                                                      maxWidth:
-                                                                          MediaQuery.of(context).size.width /
-                                                                              4,
-                                                                      "Failed",
-                                                                      saveinvoiceresponse[
-                                                                              "msg"]
-                                                                          .toString(),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .red,
-                                                                      colorText:
-                                                                          Colors
-                                                                              .white);
-                                                                }
-                                                              }
-                                                            }
+                                                          onPressed: () {
+                                                            _saveOrder(model);
                                                           },
                                                           elevation: 2.0,
                                                           fillColor:
@@ -4259,90 +4147,90 @@ class _NewOrderState extends State<NewOrder> {
                                                       ),
                                                     ],
                                                   ),
-                                                  // Discount text box
-                                                  Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceAround,
-                                                    children: [
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                    .only(
-                                                                top: 2,
-                                                                bottom: 4),
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            Text(
-                                                              "Discount Amount"
-                                                                  .toUpperCase(),
-                                                              textAlign:
-                                                                  TextAlign
-                                                                      .start,
-                                                              style: const TextStyle(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  fontSize: 10,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontFamily:
-                                                                      'Montserrat'),
-                                                            ),
-                                                          ],
+                                                  */
+                                            // Discount text box
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(8.0),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceAround,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 16,
+                                                            right: 4,
+                                                            top: 2,
+                                                            bottom: 4),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          "Discount Amount"
+                                                              .toUpperCase(),
+                                                          textAlign:
+                                                              TextAlign.start,
+                                                          style: const TextStyle(
+                                                              color:
+                                                                  Colors.black,
+                                                              fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontFamily:
+                                                                  'Montserrat'),
                                                         ),
-                                                      ),
-                                                      Container(
-                                                        width: MediaQuery.of(
-                                                                    context)
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    width:
+                                                        MediaQuery.of(context)
                                                                 .size
                                                                 .width /
                                                             6,
-                                                        height: 40,
-                                                        // color: Colors.red,
-                                                        child: InputDecorator(
-                                                          decoration:
-                                                              InputDecoration(
-                                                            filled: true,
-                                                            fillColor: const Color
-                                                                    .fromRGBO(
-                                                                248,
-                                                                248,
-                                                                253,
-                                                                1),
-                                                            enabledBorder:
-                                                                OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          4.0),
-                                                              borderSide:
-                                                                  BorderSide(
-                                                                color: API
-                                                                    .bordercolor,
-                                                                width: 1.0,
-                                                              ),
-                                                            ),
-                                                            focusedBorder:
-                                                                OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          4.0),
-                                                              borderSide:
-                                                                  const BorderSide(
-                                                                color: Colors
-                                                                    .green,
-                                                                width: 1.0,
-                                                              ),
-                                                            ),
-                                                            hintStyle: const TextStyle(
+                                                    height: 40,
+                                                    // color: Colors.red,
+                                                    child: InputDecorator(
+                                                      decoration:
+                                                          InputDecoration(
+                                                        filled: true,
+                                                        fillColor: const Color
+                                                                .fromRGBO(
+                                                            248, 248, 253, 1),
+                                                        enabledBorder:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              BorderSide(
+                                                            color:
+                                                                API.bordercolor,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                            color: Colors.green,
+                                                            width: 1.0,
+                                                          ),
+                                                        ),
+                                                        hintStyle:
+                                                            const TextStyle(
                                                                 fontFamily:
                                                                     'Montserrat',
                                                                 color: Color
@@ -4355,66 +4243,75 @@ class _NewOrderState extends State<NewOrder> {
                                                                     FontWeight
                                                                         .w500,
                                                                 fontSize: 14),
-                                                            contentPadding:
-                                                                const EdgeInsets
-                                                                        .fromLTRB(
-                                                                    10.0,
-                                                                    10.0,
-                                                                    10.0,
-                                                                    10.0),
-                                                            // ignore: unnecessary_null_comparison
-                                                            hintText:
-                                                                'Discount Amount',
-                                                            border: OutlineInputBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            4.0)),
-                                                          ),
-                                                          child: TextField(
-                                                            focusNode:
-                                                                footerDiscountNode,
-                                                            controller:
-                                                                discountController,
-                                                            decoration: const InputDecoration(
+                                                        contentPadding:
+                                                            const EdgeInsets
+                                                                    .fromLTRB(
+                                                                10.0,
+                                                                10.0,
+                                                                10.0,
+                                                                10.0),
+                                                        // ignore: unnecessary_null_comparison
+                                                        hintText:
+                                                            'Discount Amount',
+                                                        border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        4.0)),
+                                                      ),
+                                                      child: TextField(
+                                                        textAlign:
+                                                            TextAlign.right,
+                                                        focusNode:
+                                                            footerDiscountNode,
+                                                        controller:
+                                                            discountController,
+                                                        decoration:
+                                                            const InputDecoration(
                                                                 hintText:
                                                                     "Discount Amount",
                                                                 border:
                                                                     InputBorder
                                                                         .none),
-                                                            onChanged: (value) {
-                                                              if (footerDiscountNode
-                                                                  .hasFocus) {
-                                                                footer_discount_text =
-                                                                    value
-                                                                        .toString();
-                                                                print("Discount Amount " +
-                                                                    footer_discount_text);
-                                                                if (footer_discount_text
-                                                                    .isEmpty) {
-                                                                  footer_discount_text =
-                                                                      "0";
-                                                                }
-                                                                model.LineDiscountEnabled =
-                                                                    false;
-                                                                model.footer_discount_text =
-                                                                    footer_discount_text;
-                                                                model
-                                                                    .calculateTotalRate();
-                                                              }
-                                                              setState(() {
-                                                                print("");
-                                                              });
-                                                            },
-                                                          ),
-                                                        ),
-                                                        //  Text(((SimpleConvert.safeDouble(cashcard_card == "" ? "0.00" : cashcard_card)) +
-                                                        //         (SimpleConvert.safeDouble(cashcard_cash == "" ? "0.00" : cashcard_cash)))
-                                                        //     .toStringAsFixed(2)))
-                                                      )
-                                                    ],
-                                                  ),
-    
+                                                        onChanged: (value) {
+                                                          if (footerDiscountNode
+                                                              .hasFocus) {
+                                                            footer_discount_text =
+                                                                value
+                                                                    .toString();
+                                                            print("Discount Amount " +
+                                                                footer_discount_text);
+                                                            if (footer_discount_text
+                                                                .isEmpty) {
+                                                              footer_discount_text =
+                                                                  "0";
+                                                            }
+                                                            model.LineDiscountEnabled =
+                                                                false;
+                                                            model.footer_discount_text =
+                                                                footer_discount_text;
+                                                            model
+                                                                .calculateTotalRate();
+                                                          }
+                                                          setState(() {
+                                                            print("");
+                                                          });
+                                                        },
+                                                        inputFormatters: <
+                                                            TextInputFormatter>[
+                                                          DecimalTextInputFormatter(
+                                                              decimalRange: 2)
+                                                        ], // Only numbe
+                                                      ),
+                                                    ),
+                                                    //  Text(((SimpleConvert.safeDouble(cashcard_card == "" ? "0.00" : cashcard_card)) +
+                                                    //         (SimpleConvert.safeDouble(cashcard_cash == "" ? "0.00" : cashcard_cash)))
+                                                    //     .toStringAsFixed(2)))
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                            /*
                                                   //
                                                   Column(
                                                     crossAxisAlignment:
@@ -5264,6 +5161,258 @@ class _NewOrderState extends State<NewOrder> {
     cash_amount = "0";
     card_amount = "";
     selectedreceipttype = receipttype[0];
+    isDeliveryChargesAdded = false;
     model.removeAll();
+  }
+
+  void addDeliverycharges(CartModel model) async {
+    String deliveryId = "0";
+    var data = await getDeliveryCharges(widget.token);
+    if (data["status"] == "success") {
+      deliveryId = data["data"][0]["id"].toString();
+      bool deliveryItemExist = false;
+      model.cart.forEach((element) {
+        if (element.id == deliveryId) {
+          deliveryItemExist = true;
+          isDeliveryChargesAdded = true;
+        }
+      });
+      if (!deliveryItemExist) {
+        setState(() {
+          itemdetails = data["data"][0];
+          selectedunit = itemdetails["arr_units"][0];
+          array_units = itemdetails["arr_units"];
+          rateFocusnode.requestFocus();
+        });
+      } else {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Delivery charges already added.",
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      }
+      isDeliveryChargesAdded = true;
+    }
+  }
+
+  _saveOrder(CartModel model) async {
+    if (customerdetails.isEmpty) {
+      Get.snackbar(
+          maxWidth: MediaQuery.of(context).size.width / 4,
+          "Failed",
+          "Please select customer".toString(),
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    } else {
+      if (model.cart.isEmpty) {
+        Get.snackbar(
+            maxWidth: MediaQuery.of(context).size.width / 4,
+            "Failed",
+            "Please select items".toString(),
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      } else if (!isDeliveryChargesAdded) {
+        _showConfirmationDialog(context, model).then((value) {
+          _saveOrder(model);
+        });
+        // _showConfirmationDialog(context).then((bool value) {
+        //   if (value) {
+        //     addDeliverycharges(model);
+        //   } else {
+        //     isDeliveryChargesAdded = true;
+        //     _saveOrder(model);
+        //   }
+        // });
+      } else {
+        print("This is the total price");
+        print(model.total_with_out_vat);
+
+        // Real saving start here
+        var receivedAmount = receivedamountcontroller.text.toString();
+        final dynamic calculationresponse =
+            await ApiOrder.convertData(model.cart);
+        setState(() {
+          mainloading = true;
+        });
+        final dynamic saveinvoiceresponse = await ApiOrder.save(
+            userId,
+            customerdetails["id"],
+            selectedContact.toString(),
+            calculationresponse["items"],
+            widget.token,
+            footer_discount.toString(),
+            model.footer_discount_Pecentage.toString(),
+            homeDelivery,
+            model.round_off_amount.toString(),
+            model.net_total.toString());
+        if (saveinvoiceresponse["status"] == "success") {
+          model.removeAll();
+          selectedreceipttype = {};
+          receivedamountcontroller.text = "";
+          authorizationcodecontroller.text = "";
+          barcodeController.text = "";
+          barcodeController.clear();
+          discountController.clear();
+          footer_discount = 0;
+          model.footer_discount_Pecentage = 0;
+          model.footer_discount_text = "0.00";
+
+          const PaperSize paper = PaperSize.mm80;
+          final profile = await CapabilityProfile.load();
+          final printer = NetworkPrinter(paper, profile);
+          print(widget.usbdevice);
+          if (widget.usbdevice.isNotEmpty || true) {
+            var footerDeatils = {
+              "sub_total": saveinvoiceresponse["sub_total"].toString(),
+              "vat": saveinvoiceresponse["total_tax_amount"],
+              "total_without_vat": saveinvoiceresponse["total_wo_vat"],
+              "discount": saveinvoiceresponse["total_discount"].toString(),
+              "grand_total": saveinvoiceresponse["grand_total"],
+              "round_off": (saveinvoiceresponse["round_off"] == null)
+                  ? "0"
+                  : saveinvoiceresponse["round_off"],
+              "emirates": saveinvoiceresponse!["emirates"],
+            };
+            for (int i = 0;
+
+                /// sometimes user want 2 copies of invoice;
+                i < widget.numberInvoiceCopy;
+                i++) {
+              await OrderListApi.printOrderWindows(
+                  BluetoothPrinter(
+                      deviceName: widget.usbdevice["devicename"],
+                      vendorId: widget.usbdevice["vendorid"],
+                      productId: widget.usbdevice["productid"]),
+                  printer,
+                  saveinvoiceresponse["items"],
+                  imagebytes,
+                  saveinvoiceresponse["order_id"].toString(),
+                  saveinvoiceresponse["customer_name"],
+                  saveinvoiceresponse["order_date"],
+                  saveinvoiceresponse["warehouse_name"],
+                  widget.userdetails["company_name"],
+                  widget.userdetails["billing_address"],
+                  widget.userdetails["genral_phno"],
+                  saveinvoiceresponse["customer_phone"],
+                  saveinvoiceresponse["sales_man"],
+                  widget.userdetails["trn_no"],
+                  saveinvoiceresponse["total_amount"],
+                  saveinvoiceresponse["total_discount"],
+                  saveinvoiceresponse["total_wo_vat"],
+                  saveinvoiceresponse["total_tax_amount"].toString(),
+                  saveinvoiceresponse["grand_total"].toString(),
+                  saveinvoiceresponse["customer_address"],
+                  saveinvoiceresponse["order_created_date_time"].toString(),
+                  saveinvoiceresponse["order_id"].toString(),
+                  imgrowdatabytes,
+                  footerDeatils);
+            }
+          }
+          // setState(() {
+          //   loading = false;
+          // });
+          // setStateDialog(() {
+          //   dialogueloading = false;
+          // });
+          setState(() {
+            mainloading = false;
+          });
+          model.net_total = 0;
+          pushWidgetWhileRemove(
+              newPage: const SuccessPage(screen: dashboard()),
+              context: context);
+        } else {
+          setState(() {
+            mainloading = false;
+          });
+
+          Get.snackbar(
+              maxWidth: MediaQuery.of(context).size.width / 4,
+              "Failed",
+              saveinvoiceresponse["msg"].toString(),
+              backgroundColor: Colors.red,
+              colorText: Colors.white);
+        }
+      }
+    }
+  }
+
+  Future<bool> _showConfirmationDialog(
+      BuildContext context, CartModel model) async {
+    deliveryCharges = await getDeliveryCharges(widget.token);
+    GlobalKey<FormState> keyDelivery = GlobalKey<FormState>();
+    String rate = deliveryCharges["data"][0]["rate"].toString();
+    bool result = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final TextEditingController deliveryController =
+            TextEditingController();
+
+        return AlertDialog(
+          title: const Text("Devlivery charges"),
+          content: Form(
+            key: keyDelivery,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    "Would you like to add delivery charges to current order?"),
+                TextFormField(
+                  //controller: deliveryController,
+                  initialValue: rate,
+                  onChanged: (String? value) {
+                    rate = value.toString();
+                  },
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(
+                      hintText: 'Delivery Charge',
+                      prefixIcon: Icon(Icons.delivery_dining_outlined)),
+                  validator: (String? value) {
+                    if (value == null) {
+                      return 'Please enter delivery charges';
+                    }
+                    final n = num.tryParse(value);
+                    if (n == null || n <= 0) {
+                      return 'Please enter a positive number';
+                    }
+                    if (value.contains('.') &&
+                        value.substring(value.indexOf('.') + 1).length > 2) {
+                      return 'Please enter a number with maximum of 2 decimal points';
+                    }
+                    return null;
+                  },
+                )
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("No"),
+              onPressed: () {
+                isDeliveryChargesAdded = true;
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: const Text("Yes"),
+              onPressed: () {
+                if (keyDelivery.currentState!.validate()) {
+                  deliveryCharges["data"][0]["rate"] = rate.toString();
+                  itemdetails = deliveryCharges["data"][0];
+                  selectedunit = itemdetails["arr_units"][0];
+                  array_units = itemdetails["arr_units"];
+                  addProducttoTable(model);
+                  isDeliveryChargesAdded = true;
+                  Navigator.of(context).pop(true);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+    return result;
   }
 }
